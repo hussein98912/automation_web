@@ -18,6 +18,7 @@ class ProjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
         fields = "__all__"
+        read_only_fields = ['id']
 
 class ChatHistorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -43,7 +44,17 @@ class OrderSerializer(serializers.ModelSerializer):
 class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'full_name', 'email', 'address', 'phone_number']
+        fields = [
+            'id',
+            'username',
+            'full_name',
+            'email',
+            'address',
+            'phone_number',
+            'role',
+            'status',
+            'created_at'
+        ]
 
 
 

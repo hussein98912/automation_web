@@ -113,7 +113,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 # -------------------------------
 class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     authentication_classes = [JWTAuthentication]
 
     def get_queryset(self):

@@ -12,7 +12,8 @@ class CustomUser(AbstractUser):
 
     REQUIRED_FIELDS = ["full_name", "email", "phone_number"]
     # username و password موجودة في AbstractUser
-
+    def __str__(self):
+        return self.username
 
 # ===========================
 #  تصنيف الخدمات (Category)
@@ -41,7 +42,7 @@ class Service(models.Model):
 # ===========================
 # ===========================
 class Project(models.Model):
-    id = models.SlugField(primary_key=True, unique=True)  # e.g. "student-management"
+    id = models.AutoField(primary_key=True)
     title = models.CharField(max_length=255)
     subtitle = models.CharField(max_length=255, blank=True, null=True)
     description = models.TextField()
@@ -69,6 +70,7 @@ class Order(models.Model):
     STATUS_CHOICES = [
         ("pending", "Pending"),
         ("in_progress", "In Progress"),
+        ("ready_for_payment", "Ready For Payment"),
         ("completed", "Completed"),
     ]
 
