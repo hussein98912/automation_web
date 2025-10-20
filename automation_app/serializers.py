@@ -51,9 +51,9 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'email',
             'address',
             'phone_number',
-            'role',
-            'status',
-            'created_at'
+            'is_active',
+            'is_superuser',
+            'date_joined'
         ]
 
 
