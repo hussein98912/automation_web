@@ -8,13 +8,14 @@ from rest_framework.decorators import api_view, permission_classes, authenticati
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny,IsAuthenticated,IsAdminUser
-from .models import Category, Service, Order, Project, ChatHistory
-from .serializers import CategorySerializer, ServiceSerializer, OrderSerializer, ProjectSerializer,CustomUserSerializer
+from .models import Category, Service, Order, Project, ChatHistory,Notification
+from .serializers import CategorySerializer, ServiceSerializer, OrderSerializer, ProjectSerializer,CustomUserSerializer,NotificationSerializer
 from .Ai import ai_chat_response, suggest_workflow_name, suggest_workflow_details
 from .price import calculate_order_price  # KB pricing function
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from difflib import get_close_matches
 from django.contrib.auth.models import User
+from django.shortcuts import get_object_or_404
 
 User = get_user_model()
 
@@ -135,6 +136,14 @@ class OrderViewSet(viewsets.ModelViewSet):
             workflow_name=workflow_name,
             workflow_details=workflow_details
         )
+
+
+        Notification.objects.create(
+            user=Order.user,
+            message=f"✅ Your order #{Order.id} has been received. "
+                    f"Our admin will review it within 24 hours."
+        )
+
     @action(detail=False, methods=["get"], permission_classes=[AllowAny])
     def all(self, request):
         """Admin-only endpoint to list all orders."""
@@ -163,10 +172,16 @@ class OrderViewSet(viewsets.ModelViewSet):
             workflow_details=workflow_details
         )
 
+        Notification.objects.create(
+            user=order.user,
+            message=f"✅ Your order #{order.id} has been received. "
+                    f"Our admin will review it within 24 hours."
+        )
+
         return Response({
-            "message": "Order created successfully!",
+            "message": "Order created successfully! A notification has been sent to the user.",
             "order": self.get_serializer(order).data
-        })
+        }, status=status.HTTP_201_CREATED)
 
 # -------------------------------
 # Chatbot API
@@ -411,3 +426,65 @@ class CurrentUserView(APIView):
         serializer = CustomUserSerializer(user)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
+
+
+
+class OrderStatusUpdateAPIView(APIView):
+    # Require authentication
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+
+    def patch(self, request):
+        """
+        Update only the status of the authenticated user's order.
+        Example body: { "order_id": 1, "status": "ready_for_payment" }
+        """
+        order_id = request.data.get("order_id")
+        new_status = request.data.get("status")
+
+        if not order_id:
+            return Response({"error": "order_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        order = get_object_or_404(Order, pk=order_id, user=request.user)
+
+        if new_status not in dict(Order.STATUS_CHOICES):
+            return Response(
+                {"error": f"Invalid status. Allowed: {list(dict(Order.STATUS_CHOICES).keys())}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Update order status
+        order.status = new_status
+        order.save()
+
+        # Create notifications
+        if new_status == "ready_for_payment":
+            Notification.objects.create(
+                user=order.user,
+                message=f"💰 Your order #{order.id} has been reviewed and is now ready for payment."
+            )
+        elif new_status == "completed":
+            Notification.objects.create(
+                user=order.user,
+                message=f"✅ Your order #{order.id} has been completed successfully. Thank you!"
+            )
+        elif new_status == "in_progress":
+            Notification.objects.create(
+                user=order.user,
+                message=f"🔧 Your order #{order.id} is now in progress and being worked on by our team."
+            )
+
+        serializer = OrderSerializer(order)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+
+
+class UserNotificationListAPIView(generics.ListAPIView):
+    serializer_class = NotificationSerializer
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        # Only return notifications for the user from the token
+        return Notification.objects.filter(user=self.request.user).order_by('-created_at')

@@ -1,7 +1,7 @@
 from django.urls import path,include
 from .views import signup_api, login_api, logout_api,CategoryListAPIView, ServiceViewSet,ProjectViewSet,chatbot_api,OrderViewSet
 from . import views
-from .views import CurrentUserView,UserListView
+from .views import CurrentUserView,UserListView,OrderStatusUpdateAPIView,UserNotificationListAPIView
 from rest_framework import routers
 from rest_framework_simplejwt.views import (
     TokenRefreshView,
@@ -27,4 +27,6 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/me/', CurrentUserView.as_view(), name='current_user'),
     path('', include(router.urls)),
+    path('orders/status/', OrderStatusUpdateAPIView.as_view(), name='order-status-update'),
+    path('notifications/', UserNotificationListAPIView.as_view(), name='user-notifications'),
 ]

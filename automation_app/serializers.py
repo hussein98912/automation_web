@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Service, Order,Project,ChatHistory,CustomUser
+from .models import Category, Service, Order,Project,ChatHistory,CustomUser,Notification
 from .price import calculate_order_price
 from rest_framework.serializers import ModelSerializer
 
@@ -57,4 +57,7 @@ class CustomUserSerializer(serializers.ModelSerializer):
         ]
 
 
-
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'message', 'created_at', 'is_read']
