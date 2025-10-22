@@ -27,6 +27,6 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/me/', CurrentUserView.as_view(), name='current_user'),
     path('', include(router.urls)),
-    path('orders/status/', OrderStatusUpdateAPIView.as_view(), name='order-status-update'),
+    path('orders/<int:order_id>/status/', OrderStatusUpdateAPIView.as_view(), name='order-status-update'),
     path('notifications/', UserNotificationListAPIView.as_view(), name='user-notifications'),
 ]

@@ -430,20 +430,19 @@ class CurrentUserView(APIView):
 
 
 class OrderStatusUpdateAPIView(APIView):
-    # Require authentication
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
 
-    def patch(self, request):
+    def patch(self, request, order_id, *args, **kwargs):
         """
         Update only the status of the authenticated user's order.
-        Example body: { "order_id": 1, "status": "ready_for_payment" }
+        URL example: PATCH /orders/1/status/
+        Body example: { "status": "ready_for_payment" }
         """
-        order_id = request.data.get("order_id")
         new_status = request.data.get("status")
 
-        if not order_id:
-            return Response({"error": "order_id is required."}, status=status.HTTP_400_BAD_REQUEST)
+        if not new_status:
+            return Response({"error": "status is required."}, status=status.HTTP_400_BAD_REQUEST)
 
         order = get_object_or_404(Order, pk=order_id, user=request.user)
 
@@ -453,29 +452,22 @@ class OrderStatusUpdateAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Update order status
+        # Update order
         order.status = new_status
         order.save()
 
-        # Create notifications
-        if new_status == "ready_for_payment":
-            Notification.objects.create(
-                user=order.user,
-                message=f"💰 Your order #{order.id} has been reviewed and is now ready for payment."
-            )
-        elif new_status == "completed":
-            Notification.objects.create(
-                user=order.user,
-                message=f"✅ Your order #{order.id} has been completed successfully. Thank you!"
-            )
-        elif new_status == "in_progress":
-            Notification.objects.create(
-                user=order.user,
-                message=f"🔧 Your order #{order.id} is now in progress and being worked on by our team."
-            )
+        # Notification messages
+        messages = {
+            "ready_for_payment": f"💰 Your order #{order.id} is now ready for payment.",
+            "completed": f"✅ Your order #{order.id} has been completed successfully.",
+            "in_progress": f"🔧 Your order #{order.id} is now in progress.",
+        }
+
+        if new_status in messages:
+            Notification.objects.create(user=order.user, message=messages[new_status])
 
         serializer = OrderSerializer(order)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.data, status=status.HTTP_200_OK) 
     
 
 
