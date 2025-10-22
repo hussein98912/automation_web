@@ -26,10 +26,12 @@ class ChatHistorySerializer(serializers.ModelSerializer):
         fields = "__all__"
 
 class OrderSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
     class Meta:
         model = Order
         fields = [
             'id',
+            'user_name',
             'service',
             'industry',
             'host_duration',
@@ -40,6 +42,9 @@ class OrderSerializer(serializers.ModelSerializer):
             'created_at',
         ]
         read_only_fields = ['total_price','status','created_at']
+        
+    def get_user_name(self, obj):
+        return obj.user.get_full_name() or obj.user.username
 
 class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
