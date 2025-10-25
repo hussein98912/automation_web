@@ -146,16 +146,7 @@ class Payment(models.Model):
 
 
 
-class ChatHistory(models.Model):
-    user_id = models.CharField(max_length=100)
-    message = models.TextField()
-    response = models.TextField()
-    timestamp = models.DateTimeField(auto_now_add=True)
-    is_bot = models.BooleanField(default=False)
 
-    def __str__(self):
-        return f"{self.user_id} - {self.timestamp}"
-    
 
 
 class Notification(models.Model):
@@ -170,3 +161,18 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"Notification for {self.user.username}: {self.message}"
+
+
+
+
+class ChatHistory(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
+    message = models.TextField()
+    response = models.TextField()
+    timestamp = models.DateTimeField(auto_now_add=True)
+    is_bot = models.BooleanField(default=False)

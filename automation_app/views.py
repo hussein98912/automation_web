@@ -8,7 +8,7 @@ from rest_framework.decorators import api_view, permission_classes, authenticati
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework.permissions import AllowAny,IsAuthenticated,IsAdminUser
-from .models import Category, Service, Order, Project, ChatHistory,Notification
+from .models import Category, Service, Order, Project,Notification,ChatHistory
 from .serializers import CategorySerializer, ServiceSerializer, OrderSerializer, ProjectSerializer,CustomUserSerializer,NotificationSerializer
 from .Ai import ai_chat_response, suggest_workflow_name, suggest_workflow_details
 from .price import calculate_order_price  # KB pricing function
@@ -504,6 +504,34 @@ class ChatHistoryListAPIView(APIView):
                 "response": chat.response,
                 "timestamp": chat.timestamp,
                 "is_bot": chat.is_bot
+            }
+            for chat in chats
+        ]
+
+        return Response(data, status=status.HTTP_200_OK)
+    
+
+class AdminChatHistoryListAPIView(APIView):
+    """
+    Get all chat history for all users (Admin only).
+    Requires admin privileges and JWT token.
+    """
+    permission_classes = [IsAdminUser]
+    authentication_classes = [JWTAuthentication]
+
+    def get(self, request):
+        # Get all chat records ordered by most recent first
+        chats = ChatHistory.objects.select_related('user').order_by('-timestamp')
+
+        # Convert to JSON manually (you can use serializer instead)
+        data = [
+            {
+                "id": chat.id,
+                "username": chat.user.username if chat.user else None,
+                "message": chat.message,
+                "response": chat.response,
+                "timestamp": chat.timestamp,
+                "is_bot": chat.is_bot,
             }
             for chat in chats
         ]
