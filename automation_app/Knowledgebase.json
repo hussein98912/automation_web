@@ -1,0 +1,99 @@
+{
+  "hosting": {
+    "plans": ["1 month", "3 months", "6 months", "12 months"],
+    "price": {
+      "basic": 30,
+      "standard": 50,
+      "premium": 80,
+      "enterprise": 150
+    },
+    "currency": "USD",
+    "features": [
+      "99.9% uptime guarantee",
+      "Free SSL certificate",
+      "Daily backups",
+      "24/7 customer support",
+      "Unlimited bandwidth (Premium+)",
+      "Dedicated IP for Enterprise"
+    ]
+  },
+  "services": [
+    {
+      "id": 1,
+      "title": "Real Estate Automation",
+      "price": 200,
+      "currency": "USD",
+      "industry": "Automation"
+    },
+    {
+      "id": 2,
+      "title": "E-commerce Automation",
+      "price": 180,
+      "currency": "USD",
+      "industry": "Automation"
+    },
+    {
+      "id": 3,
+      "title": "Restaurant & Cafe Automation",
+      "price": 150,
+      "currency": "USD",
+      "industry": "Automation"
+    },
+    {
+      "id": 4,
+      "title": "Hotel Automation",
+      "price": 250,
+      "currency": "USD",
+      "industry": "Automation"
+    },
+    {
+      "id": 5,
+      "title": "Smart Cameras",
+      "price": 100,
+      "currency": "USD",
+      "industry": "Security"
+    },
+    {
+      "id": 6,
+      "title": "Access Control Systems",
+      "price": 120,
+      "currency": "USD",
+      "industry": "Security"
+    },
+    {
+      "id": 7,
+      "title": "Workflow Design",
+      "price": 50,
+      "currency": "USD",
+      "industry": "Workflow Automation"
+    },
+    {
+      "id": 8,
+      "title": "Predictive Analytics",
+      "price": 70,
+      "currency": "USD",
+      "industry": "Predictive Analytics"
+    },
+    {
+      "id": 9,
+      "title": "AI Chatbot",
+      "price": 60,
+      "currency": "USD",
+      "industry": "AI Chatbot"
+    },
+    {
+      "id": 10,
+      "title": "Workflow Automation",
+      "price": 80,
+      "currency": "USD",
+      "industry": "Workflow Automation"
+    },
+    {
+      "id": 11,
+      "title": "Robotic Process Automation",
+      "price": 90,
+      "currency": "USD",
+      "industry": "Robotic Process Automation"
+    }
+  ]
+}
