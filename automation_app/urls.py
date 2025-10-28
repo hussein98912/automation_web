@@ -1,6 +1,6 @@
 from django.urls import path,include
 #from .views import signup_api, login_api, logout_api,CategoryListAPIView, ServiceViewSet,ProjectViewSet,chatbot_api,OrderViewSet
-from . import views
+#from . import views
 #from .views import CurrentUserView,UserListView,OrderStatusUpdateAPIView,UserNotificationListAPIView,ChatHistoryListAPIView,AdminChatHistoryListAPIView
 from rest_framework import routers
 from rest_framework_simplejwt.views import (
@@ -30,7 +30,7 @@ urlpatterns = [
     path('notifications/', UserNotificationListAPIView.as_view(), name='user-notifications'),
     path('chat/history/', ChatHistoryListAPIView.as_view(), name='chat-history'),
     path('api/admin/chat-history/', AdminChatHistoryListAPIView.as_view(), name='admin-chat-history-list'),
-    path('payments/create/', views.create_payment, name='create_payment'),
-    path('payments/confirm/', views.confirm_payment, name='confirm_payment'),
+    path('payments/create/', create_payment, name='create_payment'),
+    path('payments/confirm/', confirm_payment, name='confirm_payment'),
 
 ]

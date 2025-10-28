@@ -625,7 +625,7 @@ def confirm_payment(request):
             payment.status = "paid"
             # ✅ Update the related order status
             if payment.order:
-                payment.order.status = "ready_for_payment"
+                payment.order.status = "in_progress"
                 payment.order.save()
 
         elif stripe_status in ["requires_payment_method", "requires_action"]:
