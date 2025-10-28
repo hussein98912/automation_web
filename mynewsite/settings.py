@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'automation_app',
     'rest_framework',
     "corsheaders",
+    'channels',
 ]
 
 MIDDLEWARE = [
@@ -163,3 +164,15 @@ SIMPLE_JWT = {
 
 STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY")
 
+ASGI_APPLICATION = "mynewsite.asgi.application"
+
+
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],  # Redis server
+        },
+    },
+}

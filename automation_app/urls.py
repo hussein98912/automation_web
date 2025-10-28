@@ -1,13 +1,12 @@
 from django.urls import path,include
-from .views import signup_api, login_api, logout_api,CategoryListAPIView, ServiceViewSet,ProjectViewSet,chatbot_api,OrderViewSet
+#from .views import signup_api, login_api, logout_api,CategoryListAPIView, ServiceViewSet,ProjectViewSet,chatbot_api,OrderViewSet
 from . import views
-from .views import CurrentUserView,UserListView,OrderStatusUpdateAPIView,UserNotificationListAPIView,ChatHistoryListAPIView,AdminChatHistoryListAPIView
+#from .views import CurrentUserView,UserListView,OrderStatusUpdateAPIView,UserNotificationListAPIView,ChatHistoryListAPIView,AdminChatHistoryListAPIView
 from rest_framework import routers
 from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
-
-
+from .views import *
 
 
 router = routers.DefaultRouter()
