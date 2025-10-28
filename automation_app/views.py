@@ -19,10 +19,11 @@ from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 import stripe
 import os
+from dotenv import load_dotenv
 
 User = get_user_model()
-
-
+load_dotenv()
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 class UserListView(generics.ListAPIView):
     queryset = User.objects.all()
