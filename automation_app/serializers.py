@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Category, Service, Order,Project,CustomUser,Notification,Payment
+from .models import Category, Service, Order,Project,CustomUser,Notification
 from .price import calculate_order_price
 from rest_framework.serializers import ModelSerializer
 
@@ -65,7 +65,7 @@ class NotificationSerializer(serializers.ModelSerializer):
         fields = ['id', 'message', 'created_at', 'is_read']
 
 
-class PaymentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Payment
-        fields = "__all__"
+#class PaymentSerializer(serializers.ModelSerializer):
+    #class Meta:
+        #model = Payment
+        #fields = "__all__"

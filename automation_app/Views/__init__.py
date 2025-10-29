@@ -6,3 +6,4 @@ from .chatbot_views import *
 from .payment_views import *
 from .notification_views import *
 from .admin_views import *
+from.service_views import*

@@ -2,64 +2,99 @@ import stripe
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from ..models import Payment, Order
+from ..models import  Order,Payment
 import os
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 @api_view(['POST'])
 def create_payment(request):
-    """Create Stripe PaymentIntent based on order total_price"""
+    """Create or reuse a Stripe PaymentIntent based on order total_price."""
     order_id = request.data.get("order_id")
-
     if not order_id:
         return Response({"error": "Missing order_id"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Get the order
+    # ✅ Get order
     order = Order.objects.filter(id=order_id).first()
     if not order:
         return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    # Use total_price from the order
     amount = order.total_price
     if not amount or float(amount) <= 0:
         return Response({"error": "Invalid order total price"}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Prevent multiple payments for the same order
+    # ✅ Check if order already has a payment
     existing_payment = getattr(order, "payment", None)
-    if existing_payment and existing_payment.status in ["pending", "paid"]:
+
+    # Case 1: Payment already completed
+    if existing_payment and existing_payment.status == "paid":
+        return Response({
+            "message": "Payment already completed for this order.",
+            "payment_id": existing_payment.id,
+            "status": existing_payment.status,
+            "transaction_id": existing_payment.transaction_id
+        }, status=status.HTTP_200_OK)
+
+    # Case 2: Pending payment — reuse
+    if existing_payment and existing_payment.status == "pending":
+        try:
+            intent = stripe.PaymentIntent.retrieve(existing_payment.transaction_id)
+            client_secret = getattr(intent, "client_secret", None)
+        except Exception as e:
+            print(f"⚠️ Stripe retrieve failed: {e}")
+            client_secret = None
+
+        # If no client_secret, recreate PaymentIntent
+        if not client_secret:
+            try:
+                new_intent = stripe.PaymentIntent.create(
+                    amount=int(float(amount) * 100),
+                    currency="usd",
+                    metadata={"payment_id": existing_payment.id, "order_id": order.id},
+                    automatic_payment_methods={"enabled": True},
+                )
+                existing_payment.transaction_id = new_intent.id
+                existing_payment.save()
+                client_secret = new_intent.client_secret
+            except Exception as e:
+                return Response({"error": f"Failed to recreate PaymentIntent: {str(e)}"},
+                                status=status.HTTP_400_BAD_REQUEST)
+
         return Response({
             "message": "Payment already exists for this order.",
             "payment_id": existing_payment.id,
             "status": existing_payment.status,
-            "client_secret": intent.client_secret
+            "transaction_id": existing_payment.transaction_id,
+            "client_secret": client_secret
         }, status=status.HTTP_200_OK)
 
-    # Create Payment record
-    payment = Payment.objects.create(order=order, amount=amount, status="pending")
-
+    # Case 3: No payment exists yet — create new
     try:
-        # Create Stripe PaymentIntent
+        payment = Payment.objects.create(order=order, amount=amount, status="pending")
+
         intent = stripe.PaymentIntent.create(
-            amount=int(float(amount) * 100),  # Convert to cents
+            amount=int(float(amount) * 100),
             currency="usd",
             metadata={"payment_id": payment.id, "order_id": order.id},
             automatic_payment_methods={"enabled": True},
         )
 
-        # Save transaction ID
         payment.transaction_id = intent.id
         payment.save()
 
         return Response({
             "payment_id": payment.id,
+            "transaction_id": payment.transaction_id,
             "client_secret": intent.client_secret,
             "amount": str(amount),
             "currency": "usd"
         }, status=status.HTTP_201_CREATED)
 
     except Exception as e:
+        print(f"⚠️ Stripe PaymentIntent create failed: {e}")
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
     
 
 
@@ -106,3 +141,5 @@ def confirm_payment(request):
 
     except Exception as e:
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
