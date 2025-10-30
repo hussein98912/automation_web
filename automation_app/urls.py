@@ -33,5 +33,6 @@ urlpatterns = [
     path('api/admin/chat-history/', AdminChatHistoryListAPIView.as_view(), name='admin-chat-history-list'),
     path('payments/create/', create_payment, name='create_payment'),
     path('payments/confirm/', confirm_payment, name='confirm_payment'),
+    path("activities/", ActivityListCreateAPIView.as_view(), name="activity-list-create"),
 
 ]

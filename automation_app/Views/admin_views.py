@@ -3,8 +3,10 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from ..models import ChatHistory
+from ..models import ChatHistory,Activity
 from rest_framework import status
+from rest_framework import generics, permissions
+from automation_app.serializers import ActivitySerializer
 
 class AdminChatHistoryListAPIView(APIView):
     """
@@ -34,3 +36,10 @@ class AdminChatHistoryListAPIView(APIView):
         return Response(data, status=status.HTTP_200_OK)
     
 
+class ActivityListCreateAPIView(generics.ListCreateAPIView):
+    queryset = Activity.objects.all().order_by("-created_at")
+    serializer_class = ActivitySerializer
+    permission_classes = [permissions.IsAdminUser]
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)

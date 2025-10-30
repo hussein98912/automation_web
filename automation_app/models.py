@@ -166,3 +166,25 @@ class ChatHistory(models.Model):
     response = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     is_bot = models.BooleanField(default=False)
+
+
+
+class Activity(models.Model):
+    ACTION_CHOICES = [
+        ("create_service", "Created a Service"),
+        ("create_project", "Created a Project"),
+        ("edit_order", "Edited an Order"),
+    ]
+
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="activities"
+    )
+    action = models.CharField(max_length=50, choices=ACTION_CHOICES)
+    description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.action} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
