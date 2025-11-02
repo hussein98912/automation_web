@@ -6,6 +6,7 @@ from .models import Notification
 class NotificationConsumer(AsyncWebsocketConsumer):
 
     async def connect(self):
+        from .models import Notification
         self.user_id = self.scope['url_route']['kwargs']['user_id']
         self.group_name = f"user_{self.user_id}"
 
@@ -43,4 +44,5 @@ class NotificationConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_unread_count(self):
+        from .models import Notification
         return Notification.objects.filter(user_id=self.user_id, is_read=False).count()
