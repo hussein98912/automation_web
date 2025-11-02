@@ -4,6 +4,11 @@ from rest_framework.response import Response
 from rest_framework import status
 from ..models import  Order,Payment
 import os
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from automation_app.utils import send_real_time_notification
+
+
 
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
@@ -112,6 +117,13 @@ def confirm_payment(request):
     if not payment:
         return Response({"error": "Payment not found"}, status=status.HTTP_404_NOT_FOUND)
 
+    # Messages to send
+    messages_map = {
+        "paid": f"💰 Your order #{payment.order.id} has been paid successfully.",
+        "in_progress": f"🔧 Your order #{payment.order.id} is now in progress.",
+        "failed": f"❌ Payment for order #{payment.order.id} failed."
+    }
+
     # Fetch PaymentIntent from Stripe
     try:
         intent = stripe.PaymentIntent.retrieve(payment.transaction_id)
@@ -120,15 +132,20 @@ def confirm_payment(request):
         # Map Stripe status to your model
         if stripe_status == "succeeded":
             payment.status = "paid"
-            # ✅ Update the related order status
             if payment.order:
                 payment.order.status = "in_progress"
                 payment.order.save()
+                # ✅ Send real-time notification for the order status update
+                send_real_time_notification(payment.order.user.id, messages_map["in_progress"])
+            # ✅ Send notification for payment success
+            send_real_time_notification(payment.order.user.id, messages_map["paid"])
 
         elif stripe_status in ["requires_payment_method", "requires_action"]:
             payment.status = "pending"
         else:
             payment.status = "failed"
+            if payment.order:
+                send_real_time_notification(payment.order.user.id, messages_map["failed"])
 
         payment.save()
 

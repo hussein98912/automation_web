@@ -1,7 +1,10 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
+from .models import Notification
 
 class NotificationConsumer(AsyncWebsocketConsumer):
+
     async def connect(self):
         self.user_id = self.scope['url_route']['kwargs']['user_id']
         self.group_name = f"user_{self.user_id}"
@@ -13,6 +16,13 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         )
         await self.accept()
 
+        # Send current unread count
+        unread_count = await self.get_unread_count()
+        await self.send(text_data=json.dumps({
+            "type": "unread_count",
+            "count": unread_count
+        }))
+
     async def disconnect(self, close_code):
         # Leave group
         await self.channel_layer.group_discard(
@@ -23,6 +33,14 @@ class NotificationConsumer(AsyncWebsocketConsumer):
     # Receive message from group
     async def send_notification(self, event):
         message = event['message']
+        unread_count = await self.get_unread_count()
+
         await self.send(text_data=json.dumps({
-            'message': message
+            'type': 'notification',
+            'message': message,
+            'unread_count': unread_count
         }))
+
+    @database_sync_to_async
+    def get_unread_count(self):
+        return Notification.objects.filter(user_id=self.user_id, is_read=False).count()

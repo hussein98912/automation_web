@@ -34,5 +34,7 @@ urlpatterns = [
     path('payments/create/', create_payment, name='create_payment'),
     path('payments/confirm/', confirm_payment, name='confirm_payment'),
     path("activities/", ActivityListCreateAPIView.as_view(), name="activity-list-create"),
+    path('notifications/read/', mark_notifications_read, name='notifications-read'),
+
 
 ]

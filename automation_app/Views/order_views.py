@@ -10,16 +10,9 @@ from ..price import calculate_order_price
 from rest_framework.views import APIView
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from automation_app.utils import send_real_time_notification
 
 
-
-
-def send_real_time_notification(user_id, message):
-    channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        f"user_{user_id}",
-        {"type": "send_notification", "message": message}
-    )
 
 
 
