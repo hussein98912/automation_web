@@ -35,6 +35,6 @@ urlpatterns = [
     path('payments/confirm/', confirm_payment, name='confirm_payment'),
     path("activities/", ActivityListCreateAPIView.as_view(), name="activity-list-create"),
     path('notifications/read/', mark_notifications_read, name='notifications-read'),
-
+    path("dashboard/stats/", dashboard_stats, name="dashboard-stats"),
 
 ]
