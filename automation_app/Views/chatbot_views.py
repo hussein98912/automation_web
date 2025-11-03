@@ -3,12 +3,11 @@ from rest_framework.response import Response
 from django.contrib.auth import get_user_model
 from difflib import get_close_matches
 import re
-from django.contrib.auth.models import User
 from ..models import ChatHistory, Order, Service
 from ..Ai import suggest_workflow_name, suggest_workflow_details
 from ..price import calculate_order_price
 
-
+User = get_user_model()
 
 ORDER_TEMP = {}
 SERVICE_KEYWORDS = {
