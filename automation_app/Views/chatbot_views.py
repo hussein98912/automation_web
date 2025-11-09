@@ -41,15 +41,17 @@ def clean_suggestions(raw_lines, max_words=5):
 @api_view(["POST"])
 def chatbot_api(request):
     user_id = request.data.get("user_id")
-    message = request.data.get("message", "")
-    files = request.FILES.get("attachment")
+    message = request.data.get("message")
+    if not isinstance(message, str):
+        message = ""  # prevent .lower() errors
+
     user = User.objects.filter(id=user_id).first() if user_id else None
 
     # Retrieve last 5 conversations
     history_qs = ChatHistory.objects.filter(user_id=user_id).order_by("-timestamp")[:5]
     history = [{"q": h.message, "a": h.response} for h in history_qs][::-1]
 
-    bot_reply = ""
+    # Load temp order
     temp_order = ORDER_TEMP.get(user_id, {
         "service": None,
         "industry": None,
@@ -57,18 +59,23 @@ def chatbot_api(request):
         "workflow_name": None,
         "workflow_details": None,
         "workflow_name_choices": None,
-        "workflow_details_choices": None,
-        "file_attached": None,
-        "file_attached_checked": False
+        "workflow_details_choices": None
     })
 
-    normalized_msg = normalize_text(message)
+    # Safe normalization helper
+    def safe_normalize(txt):
+        try:
+            return normalize_text(txt)
+        except:
+            return ""
+
+    normalized_msg = safe_normalize(message)
 
     # ===== Step 1: Select Service =====
     if not temp_order["service"]:
         found_service = None
         for svc in Service.objects.all():
-            if normalize_text(svc.title) in normalized_msg:
+            if safe_normalize(svc.title) in normalized_msg:
                 found_service = svc
                 break
         if not found_service:
@@ -76,153 +83,104 @@ def chatbot_api(request):
             matched_title = fuzzy_match(normalized_msg, svc_titles)
             if matched_title:
                 found_service = Service.objects.filter(title=matched_title).first()
-
         if found_service:
             temp_order["service"] = found_service
-            bot_reply = f"✅ Great! You selected **{found_service.title}**."
-            bot_reply += "\nWhich industry does this workflow belong to? (type your own or leave blank for 'General')"
+            bot_reply = f"✅ Service selected: {found_service.title}\nWhich industry?"
         else:
-            bot_reply = "Hello! Which service do you want to automate? (Workflow Automation, RPA, AI Chatbot, Predictive Analytics, Workflow Design)"
+            bot_reply = "Which service do you want to automate? (Workflow Automation, RPA, AI Chatbot, Predictive Analytics, Workflow Design)"
 
-    # ===== Step 2: Select Industry =====
-    elif temp_order["service"] and not temp_order["industry"]:
-        industry_input = message.strip()
-        temp_order["industry"] = industry_input if industry_input else "General"
-        bot_reply = f"✅ Industry set to **{temp_order['industry']}**.\nWhich hosting plan do you want? (1 month, 3 months, 6 months, 12 months)"
+    # ===== Step 2: Industry =====
+    elif not temp_order["industry"]:
+        temp_order["industry"] = message.strip() if message.strip() else "General"
+        bot_reply = f"✅ Industry: {temp_order['industry']}\nWhich hosting plan? (1 month, 3 months, 6 months, 12 months)"
 
-    # ===== Step 3: Select Hosting Duration =====
+    # ===== Step 3: Hosting Duration =====
     elif not temp_order["host_duration"]:
         durations = ["1 month", "3 months", "6 months", "12 months"]
         selected = fuzzy_match(normalized_msg, durations)
         if selected:
             temp_order["host_duration"] = selected.replace(" ", "_")
-            bot_reply = "Perfect! What should be the workflow name? You can type 'suggest' to get suggestions."
+            bot_reply = "Perfect! What should be the workflow name? Type 'suggest' if needed."
         else:
-            bot_reply = "Please select a valid hosting duration: 1 month, 3 months, 6 months, 12 months."
+            bot_reply = "Please select a valid hosting duration: 1, 3, 6, or 12 months."
 
     # ===== Step 4: Workflow Name =====
     elif not temp_order["workflow_name"]:
         if "suggest" in normalized_msg:
-            # Pass both service and industry for better relevance
-            service_title = temp_order["service"].title if temp_order.get("service") else "Automation"
-            industry = temp_order.get("industry", "General")
-            choices = suggest_workflow_name(service_title, industry)  # 👈 updated here
-            choices = clean_suggestions(choices, max_words=5)  # clean suggestions if you have that helper
+            service_title = temp_order["service"].title
+            industry = temp_order["industry"]
+            choices = clean_suggestions(suggest_workflow_name(service_title, industry), max_words=5)
             temp_order["workflow_name_choices"] = choices
-
-            bot_reply = (
-                f"Here are 3 workflow name suggestions for the **{industry}** industry:\n"
-                + "\n".join([f"{i+1}. {c}" for i, c in enumerate(choices)])
-                + "\nReply with the number of your choice or type your own."
-            )
-
+            bot_reply = "Here are 3 workflow name suggestions:\n" + "\n".join([f"{i+1}. {c}" for i, c in enumerate(choices)])
         elif temp_order.get("workflow_name_choices"):
             choice = ''.join(filter(str.isdigit, normalized_msg))
             if choice in ["1", "2", "3"]:
-                idx = int(choice) - 1
-                temp_order["workflow_name"] = temp_order["workflow_name_choices"][idx]
-                temp_order.pop("workflow_name_choices", None)  # remove suggestions
-                bot_reply = (
-                    f"✅ Selected workflow name: **{temp_order['workflow_name']}**\n"
-                    "Now, can you provide workflow details or type 'suggest'?"
-                )
+                temp_order["workflow_name"] = temp_order["workflow_name_choices"][int(choice)-1]
+                temp_order.pop("workflow_name_choices", None)
+                bot_reply = "✅ Workflow name selected. Now provide workflow details or type 'suggest'."
             else:
                 temp_order["workflow_name"] = message
                 temp_order.pop("workflow_name_choices", None)
-                bot_reply = (
-                    "Got it! Can you provide the workflow details? You can type 'suggest' to get suggestions."
-                )
-
+                bot_reply = "Got it! Provide workflow details or type 'suggest'."
         else:
             temp_order["workflow_name"] = message
-            bot_reply = (
-                "Got it! Can you provide the workflow details? You can type 'suggest' to get suggestions."
-            )
+            bot_reply = "Got it! Provide workflow details or type 'suggest'."
 
     # ===== Step 5: Workflow Details =====
     elif not temp_order["workflow_details"]:
         if "suggest" in normalized_msg:
-            choices = suggest_workflow_details(
-                temp_order["workflow_name"],
-                service=temp_order["service"].title if temp_order.get("service") else None,
-                industry=temp_order.get("industry")
-                )
-            choices = clean_suggestions(choices, max_words=30)  # allow longer descriptions
+            choices = clean_suggestions(
+                suggest_workflow_details(temp_order["workflow_name"], temp_order["service"].title, temp_order["industry"]),
+                max_words=30
+            )
             temp_order["workflow_details_choices"] = choices
-            bot_reply = "Here are 3 workflow details suggestions:\n" + \
-                        "\n".join([f"{i+1}. {c}" for i, c in enumerate(choices)]) + \
-                        "\nReply with the number of your choice or type your own."
+            bot_reply = "Suggestions:\n" + "\n".join([f"{i+1}. {c}" for i, c in enumerate(choices)])
         elif temp_order.get("workflow_details_choices"):
             choice = ''.join(filter(str.isdigit, normalized_msg))
             if choice in ["1", "2", "3"]:
-                idx = int(choice)-1
-                temp_order["workflow_details"] = temp_order["workflow_details_choices"][idx]
+                temp_order["workflow_details"] = temp_order["workflow_details_choices"][int(choice)-1]
                 temp_order.pop("workflow_details_choices", None)
-                bot_reply = "✅ Workflow details saved.\nDo you want to attach a file? (yes/no)"
+                bot_reply = "✅ Workflow details saved. You can type 'price' to see total or 'confirm' to submit."
             else:
                 temp_order["workflow_details"] = message
                 temp_order.pop("workflow_details_choices", None)
-                bot_reply = "Do you want to attach a file? (yes/no)"
+                bot_reply = "Workflow details saved. You can type 'price' or 'confirm'."
         else:
             temp_order["workflow_details"] = message
-            bot_reply = "Do you want to attach a file? (yes/no)"
+            bot_reply = "Workflow details saved. You can type 'price' or 'confirm'."
 
-    # ===== Step 6: File Attachment =====
-    elif not temp_order.get("file_attached_checked"):
-        normalized_msg = message.lower().strip()
-        if normalized_msg in ["no", "nope", "nah"]:
-            temp_order["file_attached"] = None
-            temp_order["file_attached_checked"] = True
-            bot_reply = "Okay, no problem 😊 You can type 'price' to see the total or 'confirm' to submit."
-        elif normalized_msg in ["yes", "yep", "yeah"]:
-            temp_order["file_attached"] = True
-            bot_reply = "Please upload your file now 📎"
-        else:
-            bot_reply = "Please answer 'yes' or 'no'."
-
-    # ===== Step 7: Price & Confirm =====
+    # ===== Step 6: Price + Confirm =====
     else:
-        normalized_msg = message.lower().strip()
-        if normalized_msg in ["price", "total", "how much"]:
-            if temp_order["service"] and temp_order["host_duration"]:
-                total_price = calculate_order_price(temp_order["service"].title, temp_order["host_duration"])
-                bot_reply = f"💰 Total price: ${total_price:.2f}\nType 'confirm' to submit or 'cancel' to discard."
-            else:
-                bot_reply = "Please complete your service and hosting selection first."
-        elif normalized_msg in ["confirm", "submit", "ok", "okay"]:
-                total_price = calculate_order_price(temp_order["service"].title, temp_order["host_duration"])
-                order = Order.objects.create(
-                    user=user,
-                    service=temp_order["service"],
-                    industry=temp_order["industry"],
-                    host_duration=temp_order["host_duration"],
-                    workflow_name=temp_order["workflow_name"],
-                    workflow_details=temp_order["workflow_details"],
-                    attachment=files if temp_order.get("file_attached") else None,
-                    total_price=total_price
-                )
-
-                # Build the friendly final message
-                bot_reply = (
-                    f"✅ Order **{temp_order['workflow_name']}** submitted successfully! 🎉\n\n"
-                    f"💼 Service: {temp_order['service'].title}\n"
-                    f"🏭 Industry: {temp_order['industry']}\n"
-                    f"🕒 Hosting Duration: {temp_order['host_duration'].replace('_', ' ')}\n"
-                    f"💡 Workflow Name: {temp_order['workflow_name']}\n"
-                    f"📄 Workflow Details: {temp_order['workflow_details']}\n"
-                    f"💰 Total Price: ${total_price:.2f}\n\n"
-                    "Our team will contact you soon to start building your workflow. Thank you! 😊"
-                )
-
-                ORDER_TEMP.pop(user_id, None)
-        elif normalized_msg in ["cancel", "no", "stop"]:
+        answer = message.lower().strip()
+        if answer in ["price", "total", "how much"]:
+            total_price = calculate_order_price(temp_order["service"].title, temp_order["host_duration"])
+            bot_reply = f"💰 Total price: ${total_price:.2f}\nType 'confirm' or 'cancel'."
+        elif answer in ["confirm", "ok", "okay", "submit"]:
+            total_price = calculate_order_price(temp_order["service"].title, temp_order["host_duration"])
+            Order.objects.create(
+                user=user,
+                service=temp_order["service"],
+                industry=temp_order["industry"],
+                host_duration=temp_order["host_duration"],
+                workflow_name=temp_order["workflow_name"],
+                workflow_details=temp_order["workflow_details"],
+                total_price=total_price
+            )
+            bot_reply = f"✅ Order **{temp_order['workflow_name']}** submitted! 💰 Total: ${total_price:.2f}"
             ORDER_TEMP.pop(user_id, None)
-            bot_reply = "❌ Your order has been cancelled."
+        elif answer in ["cancel", "stop", "no"]:
+            ORDER_TEMP.pop(user_id, None)
+            bot_reply = "❌ Order cancelled."
         else:
-            bot_reply = "Type 'confirm' to submit, 'cancel' to discard, or 'price' to see total."
+            bot_reply = "Type 'confirm', 'cancel', or 'price'."
 
     # Save conversation
-    ChatHistory.objects.create(user_id=user_id or "guest", message=message, response=bot_reply)
+    ChatHistory.objects.create(
+        user_id=user_id or "guest",
+        message=message,
+        response=bot_reply
+    )
+
     ORDER_TEMP[user_id] = temp_order
 
     return Response({
@@ -230,3 +188,6 @@ def chatbot_api(request):
         "bot_response": bot_reply,
         "conversation": history + [{"q": message, "a": bot_reply}]
     })
+
+
+

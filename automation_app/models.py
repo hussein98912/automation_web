@@ -11,7 +11,7 @@ class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
 
     REQUIRED_FIELDS = ["full_name", "email", "phone_number"]
-    # username و password موجودة في AbstractUser
+    
     def __str__(self):
         return self.username
 
@@ -32,7 +32,6 @@ class Service(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField()
     features = models.JSONField(default=list, blank=True)
-    #price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -54,9 +53,9 @@ class Project(models.Model):
     technologies = models.JSONField(default=list, blank=True)
     features = models.JSONField(default=list, blank=True)
 
-    price = models.CharField(max_length=50, blank=True, null=True)  # "$2,499"
-    timeline = models.CharField(max_length=100, blank=True, null=True)  # "2-3 weeks"
-    complexity = models.CharField(max_length=50, blank=True, null=True)  # "Advanced"
+    price = models.CharField(max_length=50, blank=True, null=True)  
+    timeline = models.CharField(max_length=100, blank=True, null=True)  
+    complexity = models.CharField(max_length=50, blank=True, null=True) 
 
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -104,7 +103,6 @@ class Order(models.Model):
     )
     total_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     industry = models.CharField(max_length=50, blank=True, null=True)
-    
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     created_at = models.DateTimeField(auto_now_add=True)
 
