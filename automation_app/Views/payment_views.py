@@ -7,6 +7,8 @@ import os
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from automation_app.utils import send_real_time_notification
+from rest_framework.generics import ListAPIView
+from automation_app.serializers import TransactionSerializer
 
 
 
@@ -160,3 +162,10 @@ def confirm_payment(request):
         return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class TransactionListView(ListAPIView):
+    serializer_class = TransactionSerializer
+
+    def get_queryset(self):
+        return Payment.objects.filter(
+            status__in=["pending", "paid"]
+        ).select_related("order", "order__service")

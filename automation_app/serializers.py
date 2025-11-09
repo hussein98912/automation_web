@@ -79,3 +79,20 @@ class ActivitySerializer(serializers.ModelSerializer):
         model = Activity
         fields = ["id", "user", "user_name", "action", "description", "created_at"]
         read_only_fields = ["id", "created_at","user"]
+
+
+class TransactionSerializer(serializers.ModelSerializer):
+    service_name = serializers.CharField(source="order.service.title", read_only=True)
+    order_status = serializers.CharField(source="order.status", read_only=True)
+
+    class Meta:
+        model = Payment
+        fields = [
+            "id",
+            "order",
+            "service_name",
+            "amount",
+            "status",
+            "payment_date",
+            "order_status",
+        ]
