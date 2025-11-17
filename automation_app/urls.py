@@ -37,5 +37,6 @@ urlpatterns = [
     path('notifications/read/', mark_notifications_read, name='notifications-read'),
     path("dashboard/stats/", dashboard_stats, name="dashboard-stats"),
     path("transactions/", TransactionListView.as_view(), name="transactions"),
+    path('video/<int:pk>/', stream_video, name='stream_video'),
 
 ]
