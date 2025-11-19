@@ -24,12 +24,15 @@ class ProjectSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
+    service = ServiceSerializer(read_only=True)
+    project = ProjectSerializer(read_only=True) 
     class Meta:
         model = Order
         fields = [
             'id',
             'user_name',
             'service',
+            'project',
             'industry',
             'host_duration',
             'workflow_name',

@@ -1,16 +1,17 @@
 from rest_framework import viewsets, status,permissions
-from rest_framework.decorators import action
+from rest_framework.decorators import action,api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.shortcuts import get_object_or_404
-from ..models import Order, Notification
+from ..models import Order, Notification,Project
 from ..serializers import OrderSerializer
 from ..price import calculate_order_price
 from rest_framework.views import APIView
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from automation_app.utils import send_real_time_notification
+from django.core.exceptions import ValidationError
 
 
 
@@ -25,15 +26,22 @@ class OrderViewSet(viewsets.ModelViewSet):
         return Order.objects.filter(user=self.request.user).order_by("-created_at")
 
     def perform_create(self, serializer):
-        service = serializer.validated_data.get("service")
+        service = serializer.validated_data.get("service", None)
+        project = serializer.validated_data.get("project", None)
         host_duration = serializer.validated_data.get("host_duration")
         industry = serializer.validated_data.get("industry", None)
         workflow_name = serializer.validated_data.get("workflow_name", "")
         workflow_details = serializer.validated_data.get("workflow_details", "")
 
-        total_price = calculate_order_price(service.title, host_duration, industry)
+        # ✅ Calculate total price based on type of order
+        if project:
+            total_price = float(project.price or 0)
+        elif service:
+            total_price = calculate_order_price(service.title, host_duration, industry)
+        else:
+            raise ValidationError("Order must be linked to a service or a project.")
 
-        serializer.save(
+        order = serializer.save(
             user=self.request.user,
             total_price=total_price,
             industry=industry,
@@ -41,16 +49,16 @@ class OrderViewSet(viewsets.ModelViewSet):
             workflow_details=workflow_details
         )
 
-
+        # ✅ Create notification
         Notification.objects.create(
-            user=Order.user,
-            message=f"✅ Your order #{Order.id} has been received. "
-                    f"Our admin will review it within 24 hours."
+            user=order.user,
+            message=f"✅ Your order #{order.id} has been received. Our admin will review it within 24 hours."
         )
+
         send_real_time_notification(
-    self.request.user.id,
-    f"✅ Your order #{serializer.instance.id} has been received!"
-)
+            self.request.user.id,
+            f"✅ Your order #{order.id} has been received!"
+        )
 
     @action(detail=False, methods=["get"], permission_classes=[AllowAny])
     def all(self, request):
@@ -64,13 +72,20 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        service = serializer.validated_data.get("service")
+        service = serializer.validated_data.get("service", None)
+        project = serializer.validated_data.get("project", None)
         host_duration = serializer.validated_data.get("host_duration")
         industry = serializer.validated_data.get("industry", None)
         workflow_name = serializer.validated_data.get("workflow_name", "")
         workflow_details = serializer.validated_data.get("workflow_details", "")
 
-        total_price = calculate_order_price(service.title, host_duration, industry)
+        # ✅ Calculate total price
+        if project:
+            total_price = float(project.price or 0)
+        elif service:
+            total_price = calculate_order_price(service.title, host_duration, industry)
+        else:
+            raise ValidationError("Order must be linked to a service or a project.")
 
         order = serializer.save(
             user=request.user,
@@ -82,8 +97,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         Notification.objects.create(
             user=order.user,
-            message=f"✅ Your order #{order.id} has been received. "
-                    f"Our admin will review it within 24 hours."
+            message=f"✅ Your order #{order.id} has been received. Our admin will review it within 24 hours."
         )
 
         return Response({
@@ -133,3 +147,33 @@ class OrderStatusUpdateAPIView(APIView):
 
         serializer = OrderSerializer(order)
         return Response(serializer.data, status=status.HTTP_200_OK) 
+    
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_project_order(request):
+    project_id = request.data.get("project_id")
+    if not project_id:
+        return Response({"error": "project_id is required"}, status=400)
+
+    project = get_object_or_404(Project, id=project_id)
+
+    order = Order.objects.create(
+        user=request.user,
+        project=project,
+        total_price=project.price,
+        status="pending",
+        workflow_name=f"Purchase of project {project.title}"
+    )
+
+    # ✅ Safe notification
+    item_name = order.project.title if order.project else (order.service.title if order.service else "Unknown")
+    Notification.objects.create(
+        user=order.user,
+        message=f"✅ Your order #{order.id} ({item_name}) has been received."
+    )
+
+    return Response({
+        "order_id": order.id,
+        "message": "Order created successfully. Proceed to payment."
+    })

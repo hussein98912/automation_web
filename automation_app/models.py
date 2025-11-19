@@ -89,6 +89,8 @@ class Order(models.Model):
     service = models.ForeignKey(
         Service,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name="orders"
     )
     workflow_name = models.CharField(max_length=200, blank=True)
@@ -105,14 +107,25 @@ class Order(models.Model):
     industry = models.CharField(max_length=50, blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     created_at = models.DateTimeField(auto_now_add=True)
-
-    def save(self, *args, **kwargs):
-        # Calculate total price from KB
+    project = models.ForeignKey(
+    Project,
+    on_delete=models.SET_NULL,
+    null=True, blank=True,
+    related_name="orders"
+    )
+def save(self, *args, **kwargs):
+    if self.project:
+        # Project order
+        self.total_price = float(self.project.price or 0)
+    elif self.service:
+        # Service order
         self.total_price = calculate_order_price(self.service.title, self.host_duration)
-        super().save(*args, **kwargs)
+    else:
+        # Neither service nor project
+        self.total_price = 0
 
-    def __str__(self):
-        return f"Order #{self.id} - {self.user.username}"
+    super().save(*args, **kwargs)
+
 
 
 # ===========================

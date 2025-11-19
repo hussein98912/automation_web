@@ -38,5 +38,6 @@ urlpatterns = [
     path("dashboard/stats/", dashboard_stats, name="dashboard-stats"),
     path("transactions/", TransactionListView.as_view(), name="transactions"),
     path('video/<int:pk>/', stream_video, name='stream_video'),
+    path("project-order/", create_project_order, name="create_project_order"),
 
 ]
