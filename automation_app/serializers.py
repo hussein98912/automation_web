@@ -24,27 +24,51 @@ class ProjectSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
+
+    # Accept IDs when creating orders
+    service_id = serializers.IntegerField(write_only=True, required=False)
+    project_id = serializers.IntegerField(write_only=True, required=False)
+
+    # Read-only nested objects
     service = ServiceSerializer(read_only=True)
-    project = ProjectSerializer(read_only=True) 
+    project = ProjectSerializer(read_only=True)
+
     class Meta:
         model = Order
         fields = [
-            'id',
-            'user_name',
-            'service',
-            'project',
-            'industry',
-            'host_duration',
-            'workflow_name',
-            'workflow_details',
-            'total_price',
-            'status',
-            'created_at',
+            "id",
+            "user_name",
+            "service",       # returned nested
+            "service_id",    # accepted as input
+            "project",
+            "project_id",
+            "industry",
+            "host_duration",
+            "workflow_name",
+            "workflow_details",
+            "total_price",
+            "status",
+            "created_at",
         ]
-        read_only_fields = ['total_price','status','created_at']
-        
+        read_only_fields = ["total_price", "status", "created_at"]
+
     def get_user_name(self, obj):
         return obj.user.get_full_name() or obj.user.username
+
+    def validate(self, attrs):
+        # Make project/service objects
+        service_id = attrs.pop("service_id", None)
+        project_id = attrs.pop("project_id", None)
+
+        if project_id:
+            from automation_app.models import Project
+            attrs["project"] = Project.objects.get(id=project_id)
+
+        if service_id:
+            from automation_app.models import Service
+            attrs["service"] = Service.objects.get(id=service_id)
+
+        return attrs
 
 class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
