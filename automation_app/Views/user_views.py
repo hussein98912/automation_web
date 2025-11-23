@@ -8,6 +8,7 @@ from ..models import Notification,ChatHistory,Project, Order, CustomUser ,Contac
 from ..serializers import NotificationSerializer, CustomUserSerializer,ContactMessageSerializer,UpdateProfileSerializer,ChangePasswordSerializer
 from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view, permission_classes
+from django.contrib.auth import update_session_auth_hash
 
 
 
