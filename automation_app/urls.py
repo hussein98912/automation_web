@@ -39,5 +39,11 @@ urlpatterns = [
     path("transactions/", TransactionListView.as_view(), name="transactions"),
     path('video/<int:pk>/', stream_video, name='stream_video'),
     path("project-order/", create_project_order, name="create_project_order"),
+    path("orders/<int:order_id>/delete/", delete_order, name="delete_order"),
+    path("contact/send/", send_message, name="send_message"),
+    path("contact/my-messages/", get_my_messages, name="get_messages"),
+    path("contact/my-messages/<int:message_id>/", get_message, name="get_message"),
+    path("user/update-profile/", update_profile, name="update_profile"),
+    path("user/change-password/", change_password, name="change_password"),
 
 ]

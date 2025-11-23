@@ -197,8 +197,13 @@ class ChatHistory(models.Model):
 class Activity(models.Model):
     ACTION_CHOICES = [
         ("create_service", "Created a Service"),
+        ("update_service", "Updated a Service"),
+        ("delete_service", "Deleted a Service"),
         ("create_project", "Created a Project"),
+        ("update_project", "Updated a Project"),
+        ("delete_project", "Deleted a Project"),
         ("edit_order", "Edited an Order"),
+        ("delete_order", "Deleted an Order"),
     ]
 
     id = models.AutoField(primary_key=True)
@@ -213,3 +218,24 @@ class Activity(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.action} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+
+
+
+class ContactMessage(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="contact_messages",
+        null=True,  # allow anonymous messages if needed
+        blank=True
+    )
+    
+    full_name = models.CharField(max_length=150)
+    email = models.EmailField()
+    company = models.CharField(max_length=150, blank=True, null=True)
+    message = models.TextField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Message from {self.full_name}"

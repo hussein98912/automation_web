@@ -59,7 +59,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             self.request.user.id,
             f"✅ Your order #{order.id} has been received!"
         )
-
+    
     @action(detail=False, methods=["get"], permission_classes=[AllowAny])
     def all(self, request):
         """Admin-only endpoint to list all orders."""
@@ -162,7 +162,7 @@ def create_project_order(request):
         user=request.user,
         project=project,
         total_price=project.price,
-        status="pending",
+        status="Ready For Payment",
         workflow_name=f"Purchase of project {project.title}"
     )
 
@@ -177,3 +177,28 @@ def create_project_order(request):
         "order_id": order.id,
         "message": "Order created successfully. Proceed to payment."
     })
+
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def delete_order(request, order_id):
+    """
+    Delete an order created by the authenticated user.
+    Admins can delete any order.
+    """
+    order = get_object_or_404(Order, id=order_id)
+
+    # If user is not admin, ensure the order belongs to them
+    if not request.user.is_staff and order.user != request.user:
+        return Response(
+            {"error": "You do not have permission to delete this order."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
+    order.delete()
+
+    return Response(
+        {"message": "Order deleted successfully."},
+        status=status.HTTP_204_NO_CONTENT
+    )

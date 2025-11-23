@@ -2,7 +2,8 @@ from rest_framework import serializers
 from .models import Category, Service, Order,Project,CustomUser,Notification,Payment,Activity
 from .price import calculate_order_price
 from rest_framework.serializers import ModelSerializer
-
+from .models import ContactMessage
+from django.contrib.auth import get_user_model
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -123,3 +124,31 @@ class TransactionSerializer(serializers.ModelSerializer):
             "payment_date",
             "order_status",
         ]
+
+class ContactMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContactMessage
+        fields = ["id", "user", "full_name", "email", "company", "message", "created_at"]
+        read_only_fields = ["user", "created_at"]
+
+
+
+User = get_user_model()
+
+class UpdateProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["full_name","address", "phone_number","email"]
+
+
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+    confirm_password = serializers.CharField(required=True)
+
+    def validate(self, data):
+        if data["new_password"] != data["confirm_password"]:
+            raise serializers.ValidationError("New password and confirm password do not match.")
+        return data
