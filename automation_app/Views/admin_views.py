@@ -76,12 +76,7 @@ class InstagramMessageView(APIView):
         message_text = request.data.get('message')
         reply_text = request.data.get('reply', None)
 
-        user = CustomUser.objects.filter(instagram_account_id=recipient_id).first()
-        if not user:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-
         msg = InstagramMessage.objects.create(
-            user=user,
             recipient_id=recipient_id,
             sender_id=sender_id,
             sender_username=sender_username,
@@ -112,21 +107,19 @@ class InstagramCommentView(APIView):
         comment_text = request.data.get('comment')
         reply_text = request.data.get('reply', None)
 
-        user = CustomUser.objects.filter(instagram_account_id=recipient_id).first()
-        if not user:
-            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-
         comment = InstagramComment.objects.create(
-            user=user,
             recipient_id=recipient_id,
             sender_id=sender_id,
             sender_username=sender_username,
             comment=comment_text,
             reply=reply_text
         )
-        serializer = InstagramCommentSerializer(comment)
-        return Response({"message": "Comment saved", "data": serializer.data}, status=status.HTTP_201_CREATED)
 
+        serializer = InstagramCommentSerializer(comment)
+        return Response(
+            {"message": "Comment saved", "data": serializer.data},
+            status=status.HTTP_201_CREATED
+        )
     # GET: Retrieve all comments for a recipient
     def get(self, request, recipient_id):
         comments = InstagramComment.objects.filter(recipient_id=recipient_id).order_by('-timestamp')

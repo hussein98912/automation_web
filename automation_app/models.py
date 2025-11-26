@@ -253,6 +253,8 @@ class InstagramMessage(models.Model):
     user = models.ForeignKey(
         CustomUser, 
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name='instagram_messages'
     )
     recipient_id = models.CharField(max_length=50) 
@@ -272,6 +274,8 @@ class InstagramComment(models.Model):
     user = models.ForeignKey(
         CustomUser, 
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name='instagram_comments'
     )
     recipient_id = models.CharField(max_length=50) 
