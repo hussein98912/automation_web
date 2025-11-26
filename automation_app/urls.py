@@ -45,5 +45,10 @@ urlpatterns = [
     path("contact/my-messages/<int:message_id>/", get_message, name="get_message"),
     path("user/update-profile/", update_profile, name="update_profile"),
     path("user/change-password/", change_password, name="change_password"),
-
+    path('update-instagram/<int:user_id>/', UpdateInstagramIDView.as_view(), name='update-instagram'),
+    path('messages/', InstagramMessageView.as_view(), name='messages-post'),
+    path('messages/<str:recipient_id>/', InstagramMessageView.as_view(), name='messages-get'),
+    path('comments/', InstagramCommentView.as_view(), name='comments-post'),
+    path('comments/<str:recipient_id>/', InstagramCommentView.as_view(), name='comments-get'),
+    
 ]

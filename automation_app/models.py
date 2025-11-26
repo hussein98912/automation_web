@@ -10,6 +10,14 @@ class CustomUser(AbstractUser):
     phone_number = models.CharField(max_length=20)
     email = models.EmailField(unique=True)
 
+    instagram_account_id = models.CharField(
+        max_length=50, 
+        blank=True, 
+        null=True,
+        unique=True,
+        help_text="Enter the Instagram Business/Creator Account ID"
+    )
+
     REQUIRED_FIELDS = ["full_name", "email", "phone_number"]
     
     def __str__(self):
@@ -239,3 +247,39 @@ class ContactMessage(models.Model):
 
     def __str__(self):
         return f"Message from {self.full_name}"
+    
+
+class InstagramMessage(models.Model):
+    user = models.ForeignKey(
+        CustomUser, 
+        on_delete=models.CASCADE,
+        related_name='instagram_messages'
+    )
+    recipient_id = models.CharField(max_length=50) 
+    sender_id = models.CharField(max_length=50)  # Instagram sender numeric ID
+    sender_username = models.CharField(max_length=100, blank=True, null=True)
+    message = models.TextField()                 # message received from sender
+    reply = models.TextField(blank=True, null=True)  # reply sent to sender
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Message from {self.sender_username or self.sender_id} to {self.user.username}"
+
+
+
+
+class InstagramComment(models.Model):
+    user = models.ForeignKey(
+        CustomUser, 
+        on_delete=models.CASCADE,
+        related_name='instagram_comments'
+    )
+    recipient_id = models.CharField(max_length=50) 
+    sender_id = models.CharField(max_length=50)
+    sender_username = models.CharField(max_length=100, blank=True, null=True)
+    comment = models.TextField()                 # comment text
+    reply = models.TextField(blank=True, null=True)  # reply to comment
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Comment from {self.sender_username or self.sender_id} to {self.user.username}"

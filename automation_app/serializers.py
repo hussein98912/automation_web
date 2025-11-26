@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import Category, Service, Order,Project,CustomUser,Notification,Payment,Activity
 from .price import calculate_order_price
 from rest_framework.serializers import ModelSerializer
-from .models import ContactMessage
+from .models import ContactMessage,InstagramMessage, InstagramComment
 from django.contrib.auth import get_user_model
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -152,3 +152,22 @@ class ChangePasswordSerializer(serializers.Serializer):
         if data["new_password"] != data["confirm_password"]:
             raise serializers.ValidationError("New password and confirm password do not match.")
         return data
+    
+
+class InstagramIDUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['instagram_account_id']
+
+
+class InstagramMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InstagramMessage
+        fields = ['id', 'user', 'recipient_id', 'sender_id', 'sender_username', 'message', 'reply', 'timestamp']
+        read_only_fields = ['id', 'timestamp', 'user']
+
+class InstagramCommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InstagramComment
+        fields = ['id', 'user', 'recipient_id', 'sender_id', 'sender_username', 'comment', 'reply', 'timestamp']
+        read_only_fields = ['id', 'timestamp', 'user']
