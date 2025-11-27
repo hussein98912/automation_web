@@ -50,5 +50,6 @@ urlpatterns = [
     path('messages/<str:recipient_id>/', InstagramMessageView.as_view(), name='messages-get'),
     path('comments/', InstagramCommentView.as_view(), name='comments-post'),
     path('comments/<str:recipient_id>/', InstagramCommentView.as_view(), name='comments-get'),
+    path('instagram/stats/', instagram_stats, name='instagram-stats'),
     
 ]

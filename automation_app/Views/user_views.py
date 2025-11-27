@@ -4,8 +4,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth.models import User
-from ..models import Notification,ChatHistory,Project, Order, CustomUser ,ContactMessage
-from ..serializers import NotificationSerializer, CustomUserSerializer,ContactMessageSerializer,UpdateProfileSerializer,ChangePasswordSerializer
+from ..models import Notification,ChatHistory,Project, Order, CustomUser ,ContactMessage,InstagramMessage, InstagramComment
+from ..serializers import NotificationSerializer, CustomUserSerializer,ContactMessageSerializer,UpdateProfileSerializer,ChangePasswordSerializer,InstagramStatsSerializer
 from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth import update_session_auth_hash
@@ -166,3 +166,36 @@ def change_password(request):
         )
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def instagram_stats(request):
+    user = request.user
+
+    if not user.instagram_account_id:
+        return Response({"error": "User does not have an Instagram account ID."}, status=400)
+
+    recipient_id = user.instagram_account_id
+
+    # Count total messages received
+    total_messages = InstagramMessage.objects.filter(recipient_id=recipient_id).count()
+
+    # Count total comments received
+    total_comments = InstagramComment.objects.filter(recipient_id=recipient_id).count()
+
+    # Total conversations (unique senders from both messages and comments)
+    message_senders = InstagramMessage.objects.filter(recipient_id=recipient_id).values_list('sender_id', flat=True)
+    comment_senders = InstagramComment.objects.filter(recipient_id=recipient_id).values_list('sender_id', flat=True)
+
+    unique_senders = set(list(message_senders) + list(comment_senders))
+    total_conversations = len(unique_senders)
+
+    data = {
+        "total_messages": total_messages,
+        "total_comments": total_comments,
+        "total_conversations": total_conversations
+    }
+
+    serializer = InstagramStatsSerializer(data)
+    return Response(serializer.data)

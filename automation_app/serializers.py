@@ -171,3 +171,9 @@ class InstagramCommentSerializer(serializers.ModelSerializer):
         model = InstagramComment
         fields = ['id', 'user', 'recipient_id', 'sender_id', 'sender_username', 'comment', 'reply', 'timestamp']
         read_only_fields = ['id', 'timestamp', 'user']
+
+
+class InstagramStatsSerializer(serializers.Serializer):
+    total_messages = serializers.IntegerField()
+    total_comments = serializers.IntegerField()
+    total_conversations = serializers.IntegerField()
