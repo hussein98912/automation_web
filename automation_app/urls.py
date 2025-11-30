@@ -51,5 +51,8 @@ urlpatterns = [
     path('comments/', InstagramCommentView.as_view(), name='comments-post'),
     path('comments/<str:recipient_id>/', InstagramCommentView.as_view(), name='comments-get'),
     path('instagram/stats/', instagram_stats, name='instagram-stats'),
-    
+    path('api/facebook-insights/<str:instagram_account_id>/', FacebookInsightsView.as_view(), name='facebook-insights'),
+    path('api/facebook-engagement/<str:instagram_account_id>/', FacebookEngagementInsightsView.as_view(),name='facebook-engagement'),
+    path("facebook-profile/<str:instagram_id>/", FacebookProfileView.as_view()),
+    path("instagram-media-comments/<str:instagram_id>/",InstagramMediaWithCommentsView.as_view()),
 ]

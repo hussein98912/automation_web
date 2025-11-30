@@ -18,6 +18,12 @@ class CustomUser(AbstractUser):
         help_text="Enter the Instagram Business/Creator Account ID"
     )
 
+    instagram_access_token = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Access token for Instagram Graph API"
+    )
+
     REQUIRED_FIELDS = ["full_name", "email", "phone_number"]
     
     def __str__(self):

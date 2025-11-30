@@ -9,8 +9,10 @@ from ..serializers import NotificationSerializer, CustomUserSerializer,ContactMe
 from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth import update_session_auth_hash
-
-
+from django.http import JsonResponse
+from datetime import datetime, timedelta
+import requests
+from django.views import View
 
 User = get_user_model()
 
@@ -199,3 +201,133 @@ def instagram_stats(request):
 
     serializer = InstagramStatsSerializer(data)
     return Response(serializer.data)
+
+
+class FacebookInsightsView(APIView):
+    permission_classes = [IsAuthenticated]  # any logged-in user (admin or regular)
+
+    def get(self, request, instagram_account_id):
+        # Use the logged-in user's token
+        access_token = request.user.instagram_access_token
+        if not access_token:
+            return Response({"error": "Instagram access token missing"}, status=400)
+
+        today = datetime.today().date()
+        default_since = today - timedelta(days=28)
+        since = request.GET.get("since", default_since.isoformat())
+        until = request.GET.get("until", today.isoformat())
+
+        url = f"https://graph.facebook.com/v23.0/{instagram_account_id}/insights"
+        params = {
+            "metric": "reach",
+            "period": "day",
+            "since": since,
+            "until": until,
+            "access_token": access_token
+        }
+
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            return Response(response.json())
+        else:
+            return Response({
+                "error": "Failed to fetch data",
+                "status": response.status_code,
+                "details": response.json()
+            }, status=500)
+        
+
+class FacebookEngagementInsightsView(APIView):
+    permission_classes = [IsAuthenticated]   # allow any logged-in user
+
+    def get(self, request, instagram_account_id):
+        # Get the user's saved access token
+        access_token = request.user.instagram_access_token
+        if not access_token:
+            return Response({"error": "User has no Instagram access token"}, status=400)
+
+        url = f"https://graph.facebook.com/v19.0/{instagram_account_id}/insights"
+
+        params = {
+            "metric": "likes,comments,shares,saves",
+            "period": "day",
+            "metric_type": "total_value",
+            "access_token": access_token
+        }
+
+        response = requests.get(url, params=params)
+
+        if response.status_code == 200:
+            return Response(response.json())
+        else:
+            return Response({
+                "error": "Failed to fetch insights",
+                "status": response.status_code,
+                "details": response.json()
+            }, status=500)
+        
+
+class FacebookProfileView(APIView):
+    permission_classes = [permissions.IsAuthenticated]  # users + admin
+
+    def get(self, request, instagram_id):
+        access_token = request.user.instagram_access_token
+        
+        if not access_token:
+            return Response({"error": "User does not have an Instagram access token"}, status=400)
+
+        url = f"https://graph.facebook.com/v23.0/{instagram_id}"
+        params = {
+            "fields": "username,profile_picture_url,followers_count,follows_count,media_count",
+            "access_token": access_token
+        }
+
+        response = requests.get(url, params=params)
+        return Response(response.json())
+
+
+
+class InstagramMediaWithCommentsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]  # allow admin + users
+
+    def get(self, request, instagram_id):
+        # Get the user token
+        access_token = request.user.instagram_access_token
+        if not access_token:
+            return Response({"error": "User has no Instagram access token"}, status=400)
+
+        # Facebook API media URL
+        fb_url = f"https://graph.facebook.com/v23.0/{instagram_id}/media"
+        params = {
+            "fields": "id,media_type,media_url,thumbnail_url,permalink,timestamp,caption,like_count,comments_count",
+            "access_token": access_token,
+            "limit": 10
+        }
+
+        # Call META API
+        fb_response = requests.get(fb_url, params=params)
+        fb_data = fb_response.json()
+
+        # Get last 5 comments for this IG account
+        last_comments = InstagramComment.objects.filter(
+            recipient_id=instagram_id
+        ).order_by("-timestamp")[:5]
+
+        serialized_comments = [
+            {
+                "sender_id": c.sender_id,
+                "sender_username": c.sender_username,
+                "comment": c.comment,
+                "reply": c.reply,
+                "timestamp": c.timestamp
+            }
+            for c in last_comments
+        ]
+
+        # Combine result
+        result = {
+            "media": fb_data,          # from META Graph API
+            "last_5_comments": serialized_comments  # from DB
+        }
+
+        return Response(result)

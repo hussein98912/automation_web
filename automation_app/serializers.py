@@ -157,7 +157,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 class InstagramIDUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['instagram_account_id']
+        fields = ['instagram_account_id', 'instagram_access_token']
 
 
 class InstagramMessageSerializer(serializers.ModelSerializer):
