@@ -204,16 +204,16 @@ def instagram_stats(request):
 
 
 class FacebookInsightsView(APIView):
-    permission_classes = [IsAuthenticated]  # any logged-in user (admin or regular)
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, instagram_account_id):
-        # Use the logged-in user's token
         access_token = request.user.instagram_access_token
         if not access_token:
             return Response({"error": "Instagram access token missing"}, status=400)
 
         today = datetime.today().date()
         default_since = today - timedelta(days=28)
+
         since = request.GET.get("since", default_since.isoformat())
         until = request.GET.get("until", today.isoformat())
 
@@ -227,8 +227,17 @@ class FacebookInsightsView(APIView):
         }
 
         response = requests.get(url, params=params)
+
         if response.status_code == 200:
-            return Response(response.json())
+            fb_data = response.json()
+
+            # Keep ONLY the insights data, remove paging
+            cleaned = {
+                "data": fb_data.get("data", [])
+            }
+
+            return Response(cleaned)
+
         else:
             return Response({
                 "error": "Failed to fetch data",
@@ -238,10 +247,9 @@ class FacebookInsightsView(APIView):
         
 
 class FacebookEngagementInsightsView(APIView):
-    permission_classes = [IsAuthenticated]   # allow any logged-in user
+    permission_classes = [IsAuthenticated]
 
     def get(self, request, instagram_account_id):
-        # Get the user's saved access token
         access_token = request.user.instagram_access_token
         if not access_token:
             return Response({"error": "User has no Instagram access token"}, status=400)
@@ -258,7 +266,15 @@ class FacebookEngagementInsightsView(APIView):
         response = requests.get(url, params=params)
 
         if response.status_code == 200:
-            return Response(response.json())
+            data = response.json()
+
+            # Return only the "data" array, remove paging
+            cleaned = {
+                "data": data.get("data", [])
+            }
+
+            return Response(cleaned)
+
         else:
             return Response({
                 "error": "Failed to fetch insights",
@@ -288,7 +304,7 @@ class FacebookProfileView(APIView):
 
 
 class InstagramMediaWithCommentsView(APIView):
-    permission_classes = [permissions.IsAuthenticated]  # allow admin + users
+    permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, instagram_id):
         # Get the user token
@@ -308,7 +324,10 @@ class InstagramMediaWithCommentsView(APIView):
         fb_response = requests.get(fb_url, params=params)
         fb_data = fb_response.json()
 
-        # Get last 5 comments for this IG account
+        # Keep ONLY media items, remove paging
+        cleaned_media = fb_data.get("data", [])
+
+        # Get last 5 comments from DB
         last_comments = InstagramComment.objects.filter(
             recipient_id=instagram_id
         ).order_by("-timestamp")[:5]
@@ -324,10 +343,10 @@ class InstagramMediaWithCommentsView(APIView):
             for c in last_comments
         ]
 
-        # Combine result
+        # Final response
         result = {
-            "media": fb_data,          # from META Graph API
-            "last_5_comments": serialized_comments  # from DB
+            "media": cleaned_media,           # removed paging
+            "last_5_comments": serialized_comments
         }
 
         return Response(result)
