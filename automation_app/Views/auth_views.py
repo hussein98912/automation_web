@@ -53,6 +53,7 @@ def login_api(request):
             "message": f"Welcome, {username}!",
             "user_id": user.id,
             "username": user.username,
+            "instagram_account_id": user.instagram_account_id,
             "access": str(refresh.access_token),
             "refresh": str(refresh)
         }, status=status.HTTP_200_OK)
