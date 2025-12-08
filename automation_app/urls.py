@@ -53,6 +53,15 @@ urlpatterns = [
     path('instagram/stats/', instagram_stats, name='instagram-stats'),
     path('api/facebook-insights/<str:instagram_account_id>/', FacebookInsightsView.as_view(), name='facebook-insights'),
     path('api/facebook-engagement/<str:instagram_account_id>/', FacebookEngagementInsightsView.as_view(),name='facebook-engagement'),
-    path("facebook-profile/<str:instagram_id>/", FacebookProfileView.as_view()),
+    path("instagram-profile/<str:instagram_id>/", instagramProfileView.as_view()),
     path("instagram-media-comments/<str:instagram_id>/",InstagramMediaWithCommentsView.as_view()),
+    path("facebook/<str:page_id>/profile/", FacebookPageProfileView.as_view(), name="facebook-page-profile"),#yes
+    path("facebook/<str:page_id>/posts/", FacebookPostsWithCommentsView.as_view(), name="facebook-posts-comments"),#yes
+    path("facebook/stats/", facebook_stats, name="facebook-stats"),
+    path('facebook/messages/', FacebookMessageView.as_view(), name='facebook-messages-post'),  # POST
+    path('facebook/messages/<str:recipient_page_id>/', FacebookMessageView.as_view(), name='facebook-messages-get'),  # GET
+    path('facebook/comments/', FacebookCommentView.as_view(), name='facebook-comments-post'),  # POST
+    path('facebook/comments/<str:post_id>/', FacebookCommentView.as_view(), name='facebook-comments-get'),
+    path("facebook/insights/<str:page_id>/",FacebookPageInsightsMetricView.as_view(),name="facebook-insights"),  # GET
+    path("facebook/insights/multi/<str:page_id>/",FacebookPageInsightsMultiMetricView.as_view(),name="facebook-insights-multi")
 ]

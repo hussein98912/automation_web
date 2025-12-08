@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import Category, Service, Order,Project,CustomUser,Notification,Payment,Activity
 from .price import calculate_order_price
 from rest_framework.serializers import ModelSerializer
-from .models import ContactMessage,InstagramMessage, InstagramComment
+from .models import ContactMessage,InstagramMessage, InstagramComment,FacebookComment,FacebookMessage
 from django.contrib.auth import get_user_model
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -157,7 +157,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 class InstagramIDUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['instagram_account_id', 'instagram_access_token']
+        fields = ['instagram_account_id', 'instagram_access_token','facebook_page_id','facebook_access_token']
 
 
 class InstagramMessageSerializer(serializers.ModelSerializer):
@@ -174,6 +174,43 @@ class InstagramCommentSerializer(serializers.ModelSerializer):
 
 
 class InstagramStatsSerializer(serializers.Serializer):
+    total_messages = serializers.IntegerField()
+    total_comments = serializers.IntegerField()
+    total_conversations = serializers.IntegerField()
+
+class FacebookMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FacebookMessage
+        fields = [
+            'id',
+            'user',
+            'sender_id',
+            'sender_name',
+            'recipient_page_id',
+            'message',
+            'reply',
+        ]
+        read_only_fields = ['id', 'user']
+
+
+class FacebookCommentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = FacebookComment
+        fields = [
+            'id',
+            'user',
+            'recipient_id',
+            'sender_id',
+            'sender_name',
+            'comment',
+            'reply',
+            'timestamp',
+        ]
+        read_only_fields = ['id', 'timestamp', 'user']
+
+
+
+class FacebookStatsSerializer(serializers.Serializer):
     total_messages = serializers.IntegerField()
     total_comments = serializers.IntegerField()
     total_conversations = serializers.IntegerField()

@@ -3,8 +3,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from ..models import ChatHistory,Activity,CustomUser, InstagramMessage, InstagramComment
-from ..serializers import InstagramMessageSerializer, InstagramCommentSerializer
+from ..models import ChatHistory,Activity,CustomUser, InstagramMessage, InstagramComment,FacebookMessage,FacebookComment
+from ..serializers import InstagramMessageSerializer, InstagramCommentSerializer,FacebookMessageSerializer,FacebookCommentSerializer
 from rest_framework import status
 from rest_framework import generics, permissions
 from automation_app.serializers import ActivitySerializer,InstagramIDUpdateSerializer
@@ -59,7 +59,7 @@ class UpdateInstagramIDView(APIView):
         serializer = InstagramIDUpdateSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response({"message": "Instagram ID and access token updated successfully"})
+            return Response({"message": "Instagram ID, Instagram access token, and Facebook Page ID updated successfully"})
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
@@ -126,4 +126,68 @@ class InstagramCommentView(APIView):
         serializer = InstagramCommentSerializer(comments, many=True)
         return Response(serializer.data)
 
+
+
+
+# --- Facebook Messages ---
+class FacebookMessageView(APIView):
+    permission_classes = []  # Adjust permissions as needed
+
+    # POST: Save message
+    def post(self, request):
+        user = request.user if request.user.is_authenticated else None
+        sender_id = request.data.get('sender_id')
+        sender_name = request.data.get('sender_name')
+        recipient_page_id = request.data.get('recipient_page_id')
+        message_text = request.data.get('message')
+        reply_text = request.data.get('reply', None)
+
+        msg = FacebookMessage.objects.create(
+            user=user,
+            sender_id=sender_id,
+            sender_name=sender_name,
+            recipient_page_id=recipient_page_id,
+            message=message_text,
+            reply=reply_text
+        )
+        serializer = FacebookMessageSerializer(msg)
+        return Response({"message": "Message saved", "data": serializer.data}, status=status.HTTP_201_CREATED)
+
+    # GET: Retrieve all messages for a recipient page
+    def get(self, request, recipient_page_id):
+        messages = FacebookMessage.objects.filter(recipient_page_id=recipient_page_id).order_by('-id')
+        serializer = FacebookMessageSerializer(messages, many=True)
+        return Response(serializer.data)
+
+
+# --- Facebook Comments ---
+class FacebookCommentView(APIView):
+    permission_classes = []
+
+    # POST: Save comment
+    def post(self, request):
+        user = request.user if request.user.is_authenticated else None
+        recipient_id = request.data.get('recipient_id')
+        sender_id = request.data.get('sender_id')
+        sender_name = request.data.get('sender_name')
+        comment_text = request.data.get('comment')
+        reply_text = request.data.get('reply', None)
+
+        comment = FacebookComment.objects.create(
+            user=user,
+            recipient_id=recipient_id,
+            sender_id=sender_id,
+            sender_name=sender_name,
+            comment=comment_text,
+            reply=reply_text
+        )
+
+        serializer = FacebookCommentSerializer(comment)
+        return Response({"message": "Comment saved", "data": serializer.data}, status=status.HTTP_201_CREATED)
+
+    # GET: Retrieve all comments for a post
+    def get(self, request, post_id):
+        comments = FacebookComment.objects.filter(post_id=post_id).order_by('-timestamp')
+        serializer = FacebookCommentSerializer(comments, many=True)
+        return Response(serializer.data)
 

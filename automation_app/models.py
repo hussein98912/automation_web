@@ -18,10 +18,21 @@ class CustomUser(AbstractUser):
         help_text="Enter the Instagram Business/Creator Account ID"
     )
 
+    facebook_page_id = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text="Facebook Page ID linked to this user"
+    )
     instagram_access_token = models.TextField(
         blank=True,
         null=True,
         help_text="Access token for Instagram Graph API"
+    )
+    facebook_access_token = models.TextField(
+        blank=True,
+        null=True,
+        help_text="Access token for Facebook Graph API"
     )
 
     REQUIRED_FIELDS = ["full_name", "email", "phone_number"]
@@ -293,3 +304,41 @@ class InstagramComment(models.Model):
 
     def __str__(self):
         return f"Comment from {self.sender_username or self.sender_id} to {self.user.username}"
+
+
+
+class FacebookMessage(models.Model):
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='facebook_messages'
+    )
+    sender_id = models.CharField(max_length=50)                    
+    sender_name = models.CharField(max_length=100, blank=True, null=True)
+    recipient_page_id = models.CharField(max_length=50)             
+    message = models.TextField()                                    
+    reply = models.TextField(blank=True, null=True)                
+
+    def __str__(self):
+        return f"FB Message from {self.sender_name or self.sender_id} to page {self.recipient_page_id}"
+
+
+class FacebookComment(models.Model):
+    user = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='facebook_comments'
+    )
+    recipient_id = models.CharField(max_length=100)                        
+    sender_id = models.CharField(max_length=50)                       
+    sender_name = models.CharField(max_length=100, blank=True, null=True)
+    comment = models.TextField()                                     
+    reply = models.TextField(blank=True, null=True)                   
+    timestamp = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"FB Comment from {self.sender_name or self.sender_id} on post {self.post_id}"
