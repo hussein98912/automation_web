@@ -367,9 +367,9 @@ class FacebookPageProfileView(APIView):
         if not access_token:
             return Response({"error": "User does not have a Facebook Page access token"}, status=400)
 
-        url = f"https://graph.facebook.com/v19.0/{page_id}"
+        url = f"https://graph.facebook.com/v24.0/{page_id}"
         params = {
-            "fields": "id,name,link,category,picture,fan_count,about",
+            "fields": "id,name,link,category,picture,fan_count,about,followers_count",
             "access_token": access_token
         }
 
@@ -385,7 +385,7 @@ class FacebookPostsWithCommentsView(APIView):
         if not access_token:
             return Response({"error": "User has no Facebook Page access token"}, status=400)
 
-        fb_url = f"https://graph.facebook.com/v23.0/{page_id}/posts"
+        fb_url = f"https://graph.facebook.com/v24.0/{page_id}/posts"
         params = {
             "fields": "id,message,created_time,attachments{media},permalink_url,shares,likes.summary(true),comments.summary(true)",
             "access_token": access_token,
