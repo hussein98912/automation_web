@@ -54,6 +54,9 @@ def login_api(request):
             "user_id": user.id,
             "username": user.username,
             "instagram_account_id": user.instagram_account_id,
+            "facebook_page_id": user.facebook_page_id,
+            "instagram_access_token": user.instagram_access_token,
+            "facebook_access_token": user.facebook_access_token,
             "access": str(refresh.access_token),
             "refresh": str(refresh)
         }, status=status.HTTP_200_OK)

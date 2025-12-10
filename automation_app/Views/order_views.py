@@ -23,6 +23,9 @@ class OrderViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
 
     def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return Order.objects.all().order_by("-created_at")
         return Order.objects.filter(user=self.request.user).order_by("-created_at")
 
     def perform_create(self, serializer):
@@ -162,7 +165,7 @@ def create_project_order(request):
         user=request.user,
         project=project,
         total_price=project.price,
-        status="Ready For Payment",
+        status="ready_for_payment",
         workflow_name=f"Purchase of project {project.title}"
     )
 

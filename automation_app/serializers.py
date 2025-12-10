@@ -83,7 +83,11 @@ class CustomUserSerializer(serializers.ModelSerializer):
             'phone_number',
             'is_active',
             'is_superuser',
-            'date_joined'
+            'date_joined',
+            'instagram_account_id',
+            'facebook_page_id',
+            'instagram_access_token',
+            'facebook_access_token'
         ]
 
 

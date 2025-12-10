@@ -8,18 +8,13 @@ with open(KB_PATH, "r", encoding="utf-8") as f:
     KB = json.load(f)
 
 def get_service_info(service_title, industry=None):
-    """
-    Return a dictionary with 'price' and 'industry' for a service.
-    If industry is provided, match both service and industry.
-    """
     for svc in KB.get("services", []):
         if svc["title"].lower() == service_title.lower():
-            if industry is None or svc.get("industry", "").lower() == industry.lower():
-                return {
-                    "price": Decimal(svc["price"]),
-                    "industry": svc.get("industry")
-                }
-    print(f"Service '{service_title}' with industry '{industry}' not found in KB!")  # debug
+            return {
+                "price": Decimal(svc["price"]),
+                "industry": svc.get("industry")
+            }
+
     return {"price": Decimal("0"), "industry": industry}
 
 def calculate_order_price(service_title, host_duration, industry=None):
