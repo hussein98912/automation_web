@@ -63,5 +63,7 @@ urlpatterns = [
     path('facebook/comments/', FacebookCommentView.as_view(), name='facebook-comments-post'),  # POST
     path('facebook/comments/<str:post_id>/', FacebookCommentView.as_view(), name='facebook-comments-get'),
     path("facebook/insights/<str:page_id>/",FacebookPageInsightsMetricView.as_view(),name="facebook-insights"),  # GET
-    path("facebook/insights/multi/<str:page_id>/",FacebookPageInsightsMultiMetricView.as_view(),name="facebook-insights-multi")
+    path("facebook/insights/multi/<str:page_id>/",FacebookPageInsightsMultiMetricView.as_view(),name="facebook-insights-multi"),
+    path("create-session/", CreateBusinessSessionView.as_view(), name="create_session"),
+    path("chat/", AIChatView.as_view(), name="ai_chat"),
 ]

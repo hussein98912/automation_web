@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import Category, Service, Order,Project,CustomUser,Notification,Payment,Activity
 from .price import calculate_order_price
 from rest_framework.serializers import ModelSerializer
-from .models import ContactMessage,InstagramMessage, InstagramComment,FacebookComment,FacebookMessage
+from .models import ContactMessage,InstagramMessage, InstagramComment,FacebookComment,FacebookMessage,BusinessSession
 from django.contrib.auth import get_user_model
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -218,3 +218,9 @@ class FacebookStatsSerializer(serializers.Serializer):
     total_messages = serializers.IntegerField()
     total_comments = serializers.IntegerField()
     total_conversations = serializers.IntegerField()
+
+
+class BusinessSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BusinessSession
+        fields = '__all__'

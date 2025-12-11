@@ -342,3 +342,20 @@ class FacebookComment(models.Model):
 
     def __str__(self):
         return f"FB Comment from {self.sender_name or self.sender_id} on post {self.post_id}"
+
+
+class BusinessSession(models.Model):
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,  # ✅ Correct way
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='ai_agents'   # Avoid spaces in related_name
+    )
+    business_type = models.CharField(max_length=100)
+    business_description = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    chat_history = models.JSONField(default=list)
+
+    def __str__(self):
+        return f"{self.business_type} session for {self.user.username if self.user else 'Anonymous'}"
