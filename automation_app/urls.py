@@ -66,4 +66,6 @@ urlpatterns = [
     path("facebook/insights/multi/<str:page_id>/",FacebookPageInsightsMultiMetricView.as_view(),name="facebook-insights-multi"),
     path("create-session/", CreateBusinessSessionView.as_view(), name="create_session"),
     path("chat/", AIChatView.as_view(), name="ai_chat"),
+    path("chat/<str:session_id>/history", ChatHistoryView.as_view(), name="chat-history"),
+    path("bots/", UserBotsView.as_view(), name="user-bots"),
 ]

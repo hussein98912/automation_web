@@ -352,6 +352,7 @@ class BusinessSession(models.Model):
         blank=True,
         related_name='ai_agents'   # Avoid spaces in related_name
     )
+    name = models.CharField(max_length=150,null=True)
     business_type = models.CharField(max_length=100)
     business_description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
