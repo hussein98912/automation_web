@@ -350,7 +350,7 @@ class BusinessSession(models.Model):
         on_delete=models.CASCADE,
         null=True,
         blank=True,
-        related_name='ai_agents'   # Avoid spaces in related_name
+        related_name='ai_agents'   
     )
     name = models.CharField(max_length=150,null=True)
     business_type = models.CharField(max_length=100)
@@ -360,3 +360,48 @@ class BusinessSession(models.Model):
 
     def __str__(self):
         return f"{self.business_type} session for {self.user.username if self.user else 'Anonymous'}"
+    
+
+
+# ai_agent/models.py
+class BusinessSessionOrder(models.Model):
+    STATUS_CHOICES = (
+        ("pending", "Pending Review"),
+        ("ready_for_payment", "Ready for Payment"),
+        ("in_progress", "In Progress"),
+        ("completed", "Completed"),
+        ("cancelled", "Cancelled"),
+    )
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="business_session_orders"
+    )
+
+    session = models.ForeignKey(
+        BusinessSession,
+        on_delete=models.CASCADE,
+        related_name="orders"
+    )
+
+    order_details = models.TextField(blank=True)
+
+    # Admin will set this later
+    total_price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="pending"
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Order #{self.id} for {self.session.name}"

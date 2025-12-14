@@ -68,4 +68,10 @@ urlpatterns = [
     path("chat/", AIChatView.as_view(), name="ai_chat"),
     path("chat/<str:session_id>/history", ChatHistoryView.as_view(), name="chat-history"),
     path("bots/", UserBotsView.as_view(), name="user-bots"),
+    path("bot/create/",BusinessSessionOrderCreateView.as_view(),name="business-session-order-create"),
+    path("bot/user/", UserOrdersView.as_view(), name="user-orders"),
+    path("bot/all/", AdminAllOrdersView.as_view(), name="admin-all-orders"),
+    path("bot/<int:order_id>/update/", AdminUpdateOrderView.as_view(), name="admin-update-order"),
+    path("bot/pay/", BusinessSessionOrderPaymentView.as_view()),
+    path("stripe/webhook/", stripe_webhook),
 ]

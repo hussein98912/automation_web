@@ -1,14 +1,15 @@
 # ai_agent/views.py
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from django.conf import settings
-from ..models import BusinessSession
+from ..models import BusinessSession,BusinessSessionOrder
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from ..serializers import BusinessSessionOrderCreateSerializer,BusinessSessionOrderSerializer, AdminUpdateOrderSerializer
 
 load_dotenv()  # loads .env
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
@@ -184,7 +185,7 @@ class CreateBusinessSessionView(APIView):
 class ChatHistoryView(APIView):
     permission_classes = [IsAuthenticated]
 
-    USAGE_LIMIT = 500  # configurable
+    USAGE_LIMIT = 10 # configurable
 
     def get(self, request, session_id):
         user = request.user
@@ -264,3 +265,67 @@ class UserBotsView(APIView):
             })
 
         return Response(bots, status=status.HTTP_200_OK)
+    
+
+class BusinessSessionOrderCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = BusinessSessionOrderCreateSerializer(
+            data=request.data,
+            context={"request": request}
+        )
+
+        if serializer.is_valid():
+            order = serializer.save()
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+ #1. Get orders of the logged-in user
+class UserOrdersView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user_orders = BusinessSessionOrder.objects.filter(user=request.user)
+        serializer = BusinessSessionOrderSerializer(user_orders, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# 2. Get all orders (admin)
+class AdminAllOrdersView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def get(self, request):
+        all_orders = BusinessSessionOrder.objects.all()
+        serializer = BusinessSessionOrderSerializer(all_orders, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+# 3. Admin updates an order
+class AdminUpdateOrderView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, order_id):
+        try:
+            order = BusinessSessionOrder.objects.get(id=order_id)
+        except BusinessSessionOrder.DoesNotExist:
+            return Response(
+                {"error": "Order not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        serializer = AdminUpdateOrderSerializer(order, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(
+                {"message": "Order updated successfully"},
+                status=status.HTTP_200_OK
+            )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

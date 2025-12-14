@@ -4,6 +4,7 @@ from .price import calculate_order_price
 from rest_framework.serializers import ModelSerializer
 from .models import ContactMessage,InstagramMessage, InstagramComment,FacebookComment,FacebookMessage,BusinessSession
 from django.contrib.auth import get_user_model
+from .models import BusinessSessionOrder
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -224,3 +225,107 @@ class BusinessSessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = BusinessSession
         fields = '__all__'
+
+
+class BusinessSessionOrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BusinessSessionOrder
+        fields = "__all__"
+        read_only_fields = (
+            "user",
+            "total_price",
+            "status",
+            "created_at",
+        )
+
+
+class BusinessSessionInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BusinessSession
+        fields = [
+            "id",
+            "name",
+            "business_type",
+            "business_description",
+        ]
+
+
+
+class BusinessSessionOrderCreateSerializer(serializers.ModelSerializer):
+    session_id = serializers.PrimaryKeyRelatedField(
+        queryset=BusinessSession.objects.all(),
+        source="session",
+        write_only=True
+    )
+
+    session = BusinessSessionInfoSerializer(read_only=True)
+
+    class Meta:
+        model = BusinessSessionOrder
+        fields = [
+            "id",
+            "session_id",
+            "session",
+            "order_details",
+            "status",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "status",
+            "created_at",
+            "session",
+        ]
+
+    def validate(self, attrs):
+        request = self.context["request"]
+        session = attrs["session"]
+
+        if session.user != request.user:
+            raise serializers.ValidationError(
+                "You do not own this business session."
+            )
+
+        return attrs
+
+    def create(self, validated_data):
+        user = self.context["request"].user
+        return BusinessSessionOrder.objects.create(
+            user=user,
+            **validated_data
+        )
+    
+class BusinessSessionInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BusinessSession
+        fields = [
+            "id",
+            "name",
+            "business_type",
+            "business_description",
+        ]
+
+
+class BusinessSessionOrderSerializer(serializers.ModelSerializer):
+    session = BusinessSessionInfoSerializer(read_only=True)
+
+    class Meta:
+        model = BusinessSessionOrder
+        fields = [
+            "id",
+            "session",
+            "order_details",
+            "status",
+            "total_price",
+            "created_at",
+        ]
+
+
+class AdminUpdateOrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BusinessSessionOrder
+        fields = ["status", "total_price"]
+
+
+class OrderPaymentSerializer(serializers.Serializer):
+    order_id = serializers.IntegerField()

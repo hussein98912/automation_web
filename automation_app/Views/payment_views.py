@@ -2,13 +2,18 @@ import stripe
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from ..models import  Order,Payment
+from ..models import  Order,Payment,BusinessSessionOrder
+from rest_framework.views import APIView
 import os
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from automation_app.utils import send_real_time_notification
 from rest_framework.generics import ListAPIView
-from automation_app.serializers import TransactionSerializer
+from automation_app.serializers import TransactionSerializer,OrderPaymentSerializer
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
 
 
 
@@ -169,3 +174,90 @@ class TransactionListView(ListAPIView):
         return Payment.objects.filter(
             status__in=["pending", "paid"]
         ).select_related("order", "order__service")
+    
+
+
+
+class BusinessSessionOrderPaymentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = OrderPaymentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        order_id = serializer.validated_data["order_id"]
+
+        try:
+            order = BusinessSessionOrder.objects.get(
+                id=order_id,
+                user=request.user
+            )
+        except BusinessSessionOrder.DoesNotExist:
+            return Response(
+                {"error": "Order not found"},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        if order.status != "ready_for_payment":
+            return Response(
+                {"error": "Order is not ready for payment"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not order.total_price:
+            return Response(
+                {"error": "Order price is not set"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Stripe expects amount in cents
+        amount_cents = int(order.total_price * 100)
+
+        intent = stripe.PaymentIntent.create(
+            amount=amount_cents,
+            currency="usd",
+            metadata={
+                "order_id": order.id,
+                "user_id": order.user.id
+            }
+        )
+
+        return Response(
+            {
+                "client_secret": intent.client_secret,
+                "order_id": order.id,
+                "amount": order.total_price
+            },
+            status=status.HTTP_200_OK
+        )
+    
+endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+
+
+@csrf_exempt
+def stripe_webhook(request):
+    payload = request.body
+    sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload,
+            sig_header,
+            endpoint_secret
+        )
+    except Exception:
+        return HttpResponse(status=400)
+
+    if event["type"] == "payment_intent.succeeded":
+        intent = event["data"]["object"]
+        order_id = intent["metadata"].get("order_id")
+
+        if order_id:
+            try:
+                order = BusinessSessionOrder.objects.get(id=order_id)
+                order.status = "in_progress"
+                order.save(update_fields=["status"])
+            except BusinessSessionOrder.DoesNotExist:
+                pass
+
+    return HttpResponse(status=200)
