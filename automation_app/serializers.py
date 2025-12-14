@@ -331,3 +331,14 @@ class AdminUpdateOrderSerializer(serializers.ModelSerializer):
 
 class OrderPaymentSerializer(serializers.Serializer):
     order_id = serializers.IntegerField()
+
+
+class AdminUpdateSocialSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = [
+            'facebook_access_token',
+            'instagram_access_token',
+            'facebook_page_id',
+            'instagram_account_id',
+        ]

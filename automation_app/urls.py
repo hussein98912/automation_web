@@ -74,4 +74,5 @@ urlpatterns = [
     path("bot/<int:order_id>/update/", AdminUpdateOrderView.as_view(), name="admin-update-order"),
     path("bot/pay/", BusinessSessionOrderPaymentView.as_view()),
     path("stripe/webhook/", stripe_webhook),
+    path('update-social/<int:user_id>/', AdminUpdateSocialView.as_view(), name='admin-update-social'),
 ]

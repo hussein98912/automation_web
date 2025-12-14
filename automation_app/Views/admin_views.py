@@ -7,7 +7,9 @@ from ..models import ChatHistory,Activity,CustomUser, InstagramMessage, Instagra
 from ..serializers import InstagramMessageSerializer, InstagramCommentSerializer,FacebookMessageSerializer,FacebookCommentSerializer
 from rest_framework import status
 from rest_framework import generics, permissions
-from automation_app.serializers import ActivitySerializer,InstagramIDUpdateSerializer
+from automation_app.serializers import ActivitySerializer,InstagramIDUpdateSerializer,AdminUpdateSocialSerializer
+from rest_framework.authentication import SessionAuthentication
+from rest_framework.authentication import TokenAuthentication
 
 class AdminChatHistoryListAPIView(APIView):
     """
@@ -191,3 +193,18 @@ class FacebookCommentView(APIView):
         serializer = FacebookCommentSerializer(comments, many=True)
         return Response(serializer.data)
 
+
+class AdminUpdateSocialView(APIView):
+    permission_classes = [IsAdminUser]
+
+    def patch(self, request, user_id):
+        try:
+            user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = AdminUpdateSocialSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({"success": "User social info updated", "user": serializer.data}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
