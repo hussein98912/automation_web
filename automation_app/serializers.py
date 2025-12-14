@@ -308,6 +308,7 @@ class BusinessSessionInfoSerializer(serializers.ModelSerializer):
 
 class BusinessSessionOrderSerializer(serializers.ModelSerializer):
     session = BusinessSessionInfoSerializer(read_only=True)
+    user = CustomUserSerializer(read_only=True)
 
     class Meta:
         model = BusinessSessionOrder
@@ -318,6 +319,7 @@ class BusinessSessionOrderSerializer(serializers.ModelSerializer):
             "status",
             "total_price",
             "created_at",
+            'user',
         ]
 
 

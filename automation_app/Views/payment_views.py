@@ -219,8 +219,14 @@ class BusinessSessionOrderPaymentView(APIView):
             metadata={
                 "order_id": order.id,
                 "user_id": order.user.id
-            }
+            },
+            automatic_payment_methods={
+            "enabled": True,
+            "allow_redirects": "never"
+        }
         )
+        order.stripe_payment_intent_id = intent.id
+        order.save(update_fields=["stripe_payment_intent_id"])
 
         return Response(
             {
@@ -240,24 +246,17 @@ def stripe_webhook(request):
     sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
 
     try:
-        event = stripe.Webhook.construct_event(
-            payload,
-            sig_header,
-            endpoint_secret
-        )
+        event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
     except Exception:
         return HttpResponse(status=400)
 
     if event["type"] == "payment_intent.succeeded":
         intent = event["data"]["object"]
-        order_id = intent["metadata"].get("order_id")
-
-        if order_id:
-            try:
-                order = BusinessSessionOrder.objects.get(id=order_id)
-                order.status = "in_progress"
-                order.save(update_fields=["status"])
-            except BusinessSessionOrder.DoesNotExist:
-                pass
+        try:
+            order = BusinessSessionOrder.objects.get(stripe_payment_intent_id=intent["id"])
+            order.status = "in_progress"
+            order.save(update_fields=["status"])
+        except BusinessSessionOrder.DoesNotExist:
+            pass
 
     return HttpResponse(status=200)

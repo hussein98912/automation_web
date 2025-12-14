@@ -400,6 +400,12 @@ class BusinessSessionOrder(models.Model):
         choices=STATUS_CHOICES,
         default="pending"
     )
+    
+    stripe_payment_intent_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
 
