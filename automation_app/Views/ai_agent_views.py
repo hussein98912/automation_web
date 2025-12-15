@@ -185,14 +185,11 @@ class CreateBusinessSessionView(APIView):
 class ChatHistoryView(APIView):
     permission_classes = [IsAuthenticated]
 
-    USAGE_LIMIT = 10 # configurable
+    USAGE_LIMIT = 10
 
     def get(self, request, session_id):
         user = request.user
 
-        # -------------------------
-        # Retrieve session safely
-        # -------------------------
         session = get_object_or_404(
             BusinessSession,
             id=session_id,
@@ -201,9 +198,6 @@ class ChatHistoryView(APIView):
 
         chat_history = session.chat_history or []
 
-        # -------------------------
-        # Build messages response
-        # -------------------------
         messages = []
         for index, msg in enumerate(chat_history, start=1):
             messages.append({
@@ -218,8 +212,15 @@ class ChatHistoryView(APIView):
         )
 
         # -------------------------
-        # Final response
+        # Order info (if exists)
         # -------------------------
+        order = (
+            BusinessSessionOrder.objects
+            .filter(session=session, user=user)
+            .order_by("-created_at")
+            .first()
+        )
+
         return Response(
             {
                 "id": str(session.id),
@@ -228,7 +229,17 @@ class ChatHistoryView(APIView):
                 "created_at": session.created_at.isoformat(),
                 "messages": messages,
                 "usage_count": usage_count,
-                "usage_limit": self.USAGE_LIMIT
+                "usage_limit": self.USAGE_LIMIT,
+
+                # Order metadata
+                "order": {
+                    "order_id": order.id if order else None,
+                    "status": order.status if order else None,
+                    "status_label": (
+                        dict(BusinessSessionOrder.STATUS_CHOICES).get(order.status)
+                        if order else None
+                    ),
+                }
             },
             status=status.HTTP_200_OK
         )
@@ -238,11 +249,10 @@ class ChatHistoryView(APIView):
 class UserBotsView(APIView):
     permission_classes = [IsAuthenticated]
 
-    DEFAULT_USAGE_LIMIT = 10  # adjust later per plan
+    DEFAULT_USAGE_LIMIT = 10
 
     def get(self, request):
         user = request.user
-
         sessions = BusinessSession.objects.filter(user=user).order_by("-created_at")
 
         bots = []
@@ -254,6 +264,13 @@ class UserBotsView(APIView):
                 1 for msg in chat_history if msg.get("role") == "user"
             )
 
+            order = (
+                BusinessSessionOrder.objects
+                .filter(session=session, user=user)
+                .order_by("-created_at")
+                .first()
+            )
+
             bots.append({
                 "id": str(session.id),
                 "name": session.name,
@@ -261,10 +278,22 @@ class UserBotsView(APIView):
                 "business_description": session.business_description,
                 "createdAt": session.created_at.isoformat(),
                 "usageCount": usage_count,
-                "usageLimit": self.DEFAULT_USAGE_LIMIT
+                "usageLimit": self.DEFAULT_USAGE_LIMIT,
+
+                # Order metadata
+                "order": {
+                    "order_id": order.id if order else None,
+                    "status": order.status if order else None,
+                    "status_label": (
+                        dict(BusinessSessionOrder.STATUS_CHOICES).get(order.status)
+                        if order else None
+                    ),
+                }
             })
 
         return Response(bots, status=status.HTTP_200_OK)
+    
+
     
 
 class BusinessSessionOrderCreateView(APIView):
