@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser,User
 from django.db import models
 from django.conf import settings
 from .price import calculate_order_price
+import hashlib
 
 class CustomUser(AbstractUser):
     full_name = models.CharField(max_length=200)
@@ -411,3 +412,47 @@ class BusinessSessionOrder(models.Model):
 
     def __str__(self):
         return f"Order #{self.id} for {self.session.name}"
+
+
+class AgentAPIKey(models.Model):
+    agent = models.ForeignKey(
+        BusinessSession,
+        on_delete=models.CASCADE,
+        related_name="api_keys"
+    )
+    key_hash = models.CharField(max_length=64, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    @staticmethod
+    def hash_key(raw_key: str) -> str:
+        return hashlib.sha256(raw_key.encode()).hexdigest()
+
+    def __str__(self):
+        return f"API key for agent {self.agent.id}"
+    
+
+
+class SDKChatSession(models.Model):
+    api_key = models.ForeignKey(AgentAPIKey, on_delete=models.CASCADE)
+    session_id = models.CharField(max_length=100)
+    chat_history = models.JSONField(default=list)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ("api_key", "session_id")
+
+
+
+class TelegramBot(models.Model):
+    business_session = models.ForeignKey(
+        BusinessSession,
+        on_delete=models.CASCADE,
+        related_name="telegram_bots"
+    )
+    bot_token = models.CharField(max_length=255, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+
+    def __str__(self):
+        return f"Telegram bot for session {self.business_session.id}"

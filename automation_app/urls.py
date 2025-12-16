@@ -75,4 +75,8 @@ urlpatterns = [
     path("bot/pay/", BusinessSessionOrderPaymentView.as_view()),
     path("stripe/webhook/", stripe_webhook),
     path('update-social/<int:user_id>/', AdminUpdateSocialView.as_view(), name='admin-update-social'),
+    path("api/agents/generate-key", GenerateAgentAPIKeyView.as_view()),
+    path("Sdk/chat", SDKChatView.as_view()),
+    path("agents/connect-telegram/", ConnectTelegramBotView.as_view()),
+    path("telegram/webhook/<str:bot_token>/", TelegramWebhookView.as_view()),
 ]

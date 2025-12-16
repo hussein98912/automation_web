@@ -35,3 +35,10 @@ def send_real_time_notification(user_id: int, message: str):
             "user_id": user_id
         }
     )
+
+import secrets
+import string
+
+def generate_api_key():
+    alphabet = string.ascii_letters + string.digits
+    return "sk_" + "".join(secrets.choice(alphabet) for _ in range(32))
