@@ -250,21 +250,17 @@ class ChatHistoryView(APIView):
 
 class UserBotsView(APIView):
     permission_classes = [IsAuthenticated]
-
     DEFAULT_USAGE_LIMIT = 10
 
     def get(self, request):
         user = request.user
         sessions = BusinessSession.objects.filter(user=user).order_by("-created_at")
-
         bots = []
 
         for session in sessions:
             chat_history = session.chat_history or []
 
-            usage_count = sum(
-                1 for msg in chat_history if msg.get("role") == "user"
-            )
+            usage_count = sum(1 for msg in chat_history if msg.get("role") == "user")
 
             order = (
                 BusinessSessionOrder.objects
@@ -272,6 +268,13 @@ class UserBotsView(APIView):
                 .order_by("-created_at")
                 .first()
             )
+
+            # Check subscriptions
+            telegram_subscribed = TelegramBot.objects.filter(
+                business_session=session, is_active=True
+            ).exists()
+
+            sdk_subscribed = AgentAPIKey.objects.filter(agent=session).exists()
 
             bots.append({
                 "id": str(session.id),
@@ -281,8 +284,10 @@ class UserBotsView(APIView):
                 "createdAt": session.created_at.isoformat(),
                 "usageCount": usage_count,
                 "usageLimit": self.DEFAULT_USAGE_LIMIT,
-
-                # Order metadata
+                "subscriptions": {
+                    "telegram": telegram_subscribed,
+                    "sdk": sdk_subscribed
+                },
                 "order": {
                     "order_id": order.id if order else None,
                     "status": order.status if order else None,
