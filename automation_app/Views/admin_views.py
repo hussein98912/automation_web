@@ -78,13 +78,21 @@ class InstagramMessageView(APIView):
         message_text = request.data.get('message')
         reply_text = request.data.get('reply', None)
 
+        # Find the user by recipient_id
+        try:
+            user = CustomUser.objects.get(instagram_account_id=recipient_id)
+        except CustomUser.DoesNotExist:
+            user = None  # or return error if preferred
+
         msg = InstagramMessage.objects.create(
+            user=user,  # assign the user here
             recipient_id=recipient_id,
             sender_id=sender_id,
             sender_username=sender_username,
             message=message_text,
             reply=reply_text
         )
+
         serializer = InstagramMessageSerializer(msg)
         return Response({"message": "Message saved", "data": serializer.data}, status=status.HTTP_201_CREATED)
 
@@ -101,7 +109,6 @@ class InstagramMessageView(APIView):
 class InstagramCommentView(APIView):
     permission_classes = []
 
-    # POST: Save comment
     def post(self, request):
         recipient_id = request.data.get('recipient_id')
         sender_id = request.data.get('sender_id')
@@ -109,7 +116,14 @@ class InstagramCommentView(APIView):
         comment_text = request.data.get('comment')
         reply_text = request.data.get('reply', None)
 
+        # Try to find the user by recipient_id
+        try:
+            user = CustomUser.objects.get(instagram_account_id=recipient_id)
+        except CustomUser.DoesNotExist:
+            user = None  # optional: you can return an error if you prefer
+
         comment = InstagramComment.objects.create(
+            user=user,  # assign the user here
             recipient_id=recipient_id,
             sender_id=sender_id,
             sender_username=sender_username,
@@ -122,27 +136,27 @@ class InstagramCommentView(APIView):
             {"message": "Comment saved", "data": serializer.data},
             status=status.HTTP_201_CREATED
         )
-    # GET: Retrieve all comments for a recipient
-    def get(self, request, recipient_id):
-        comments = InstagramComment.objects.filter(recipient_id=recipient_id).order_by('-timestamp')
-        serializer = InstagramCommentSerializer(comments, many=True)
-        return Response(serializer.data)
 
 
 
 
 # --- Facebook Messages ---
 class FacebookMessageView(APIView):
-    permission_classes = []  # Adjust permissions as needed
+    permission_classes = []
 
     # POST: Save message
     def post(self, request):
-        user = request.user if request.user.is_authenticated else None
+        recipient_page_id = request.data.get('recipient_page_id')
         sender_id = request.data.get('sender_id')
         sender_name = request.data.get('sender_name')
-        recipient_page_id = request.data.get('recipient_page_id')
         message_text = request.data.get('message')
         reply_text = request.data.get('reply', None)
+
+        # Automatically get the user by recipient_page_id
+        try:
+            user = CustomUser.objects.get(facebook_page_id=recipient_page_id)
+        except CustomUser.DoesNotExist:
+            user = None
 
         msg = FacebookMessage.objects.create(
             user=user,
@@ -152,6 +166,7 @@ class FacebookMessageView(APIView):
             message=message_text,
             reply=reply_text
         )
+
         serializer = FacebookMessageSerializer(msg)
         return Response({"message": "Message saved", "data": serializer.data}, status=status.HTTP_201_CREATED)
 
@@ -168,12 +183,17 @@ class FacebookCommentView(APIView):
 
     # POST: Save comment
     def post(self, request):
-        user = request.user if request.user.is_authenticated else None
         recipient_id = request.data.get('recipient_id')
         sender_id = request.data.get('sender_id')
         sender_name = request.data.get('sender_name')
         comment_text = request.data.get('comment')
         reply_text = request.data.get('reply', None)
+
+        # Automatically get the user by recipient_id
+        try:
+            user = CustomUser.objects.get(facebook_page_id=recipient_id)
+        except CustomUser.DoesNotExist:
+            user = None
 
         comment = FacebookComment.objects.create(
             user=user,

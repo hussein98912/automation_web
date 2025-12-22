@@ -9,7 +9,6 @@ from rest_framework_simplejwt.views import (
 from .Views import *
 
 
-
 router = routers.DefaultRouter()
 router.register(r'services', ServiceViewSet)
 router.register(r'projects', ProjectViewSet)
@@ -79,4 +78,10 @@ urlpatterns = [
     path("Sdk/chat", SDKChatView.as_view()),
     path("agents/connect-telegram/", ConnectTelegramBotView.as_view()),
     path("telegram/webhook/<str:bot_token>/", TelegramWebhookView.as_view()),
+    path('instagram/monthly-report/', instagram_monthly_report, name='instagram-monthly-report'),
+    path('instagram/best-worst-posts/', instagram_best_worst_posts, name='instagram-best-worst-posts'),
+    path('instagram/complaints-reviews/', instagram_complaints_and_reviews, name='instagram-complaints-reviews'),
+    path('facebook/monthly-report/', user_views.facebook_monthly_report, name='facebook-monthly-report'),
+    path('facebook/best-worst-posts/', user_views.facebook_best_worst_posts, name='facebook-best-worst-posts'),
+    path('facebook/complaints-reviews/', user_views.facebook_complaints_and_reviews, name='facebook-complaints-reviews'),
 ]

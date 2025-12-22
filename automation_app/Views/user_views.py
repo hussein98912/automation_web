@@ -13,6 +13,9 @@ from django.http import JsonResponse
 from datetime import datetime, timedelta
 import requests
 from django.views import View
+from datetime import datetime, time
+from ..utils import get_month_range,gpt_classify_text
+from collections import Counter
 
 User = get_user_model()
 
@@ -540,3 +543,307 @@ class FacebookPageInsightsMultiMetricView(APIView):
             del data["paging"]
 
         return Response(data)
+
+#instagram analysis -------------------------------------------------------------------------------------
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def instagram_monthly_report(request):
+    user = request.user
+
+    if not user.instagram_account_id:
+        return Response({"error": "Instagram account not connected"}, status=400)
+
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+
+    start_date, end_date = get_month_range(year, month)
+    instagram_id = user.instagram_account_id
+
+    # Use datetime range for timezone-safe filtering
+    start_datetime = datetime.combine(start_date, time.min)
+    end_datetime = datetime.combine(end_date, time.max)
+
+    messages = InstagramMessage.objects.filter(
+        recipient_id=instagram_id,
+        timestamp__range=(start_datetime, end_datetime)
+    )
+
+    comments = InstagramComment.objects.filter(
+        recipient_id=instagram_id,
+        timestamp__range=(start_datetime, end_datetime)
+    )
+
+    unique_senders = set(
+        list(messages.values_list("sender_id", flat=True)) +
+        list(comments.values_list("sender_id", flat=True))
+    )
+
+    days = (end_date - start_date).days + 1
+
+    return Response({
+        "period": f"{start_date.strftime('%Y-%m')}",
+        "messages": {
+            "total": messages.count(),
+            "daily_avg": round(messages.count() / days, 2)
+        },
+        "comments": {
+            "total": comments.count(),
+            "daily_avg": round(comments.count() / days, 2)
+        },
+        "conversations": len(unique_senders)
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def instagram_best_worst_posts(request):
+    user = request.user
+
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+
+    start_date, end_date = get_month_range(year, month)
+
+    instagram_id = user.instagram_account_id
+    access_token = user.instagram_access_token
+
+    url = f"https://graph.facebook.com/v23.0/{instagram_id}/media"
+    params = {
+        "fields": "id,permalink,timestamp,like_count,comments_count",
+        "access_token": access_token,
+        "limit": 50
+    }
+
+    data = requests.get(url, params=params).json().get("data", [])
+
+    posts = []
+    for post in data:
+        post_date = datetime.fromisoformat(post["timestamp"]).date()
+        if start_date <= post_date <= end_date:
+            likes = post.get("like_count", 0)
+            comments = post.get("comments_count", 0)
+            post["engagement"] = likes + comments
+            posts.append(post)
+
+    if not posts:
+        return Response({"message": "No posts in this month"})
+
+    best_post = max(posts, key=lambda x: x["engagement"])
+    worst_post = min(posts, key=lambda x: x["engagement"])
+
+    return Response({
+        "period": f"{start_date.strftime('%Y-%m')}",
+        "best_post": {
+            "permalink": best_post["permalink"],
+            "likes": best_post["like_count"],
+            "comments": best_post["comments_count"],
+            "engagement": best_post["engagement"]
+        },
+        "worst_post": {
+            "permalink": worst_post["permalink"],
+            "likes": worst_post["like_count"],
+            "comments": worst_post["comments_count"],
+            "engagement": worst_post["engagement"]
+        }
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def instagram_complaints_and_reviews(request):
+    user = request.user
+
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+
+    start_date, end_date = get_month_range(year, month)
+    instagram_id = user.instagram_account_id
+
+    messages = InstagramMessage.objects.filter(
+        recipient_id=instagram_id,
+        timestamp__date__range=(start_date, end_date)
+    )
+
+    comments = InstagramComment.objects.filter(
+        recipient_id=instagram_id,
+        timestamp__date__range=(start_date, end_date)
+    )
+
+    complaints = []
+    sentiment_count = {"Positive": 0, "Neutral": 0, "Negative": 0}
+
+    # Combine messages and comments
+    for obj in list(messages) + list(comments):
+        text = getattr(obj, "message", None) or obj.comment
+
+        # GPT classification
+        sentiment = gpt_classify_text(text, task="sentiment")
+        complaint = gpt_classify_text(text, task="complaint")
+
+        # Count sentiment
+        if sentiment in sentiment_count:
+            sentiment_count[sentiment] += 1
+
+        # Collect complaints
+        if complaint == "Yes":
+            complaints.append(text)
+
+    top_complaints = Counter(complaints).most_common(5)
+
+    return Response({
+        "period": f"{start_date.strftime('%Y-%m')}",
+        "top_complaints": [{"topic": k, "count": v} for k, v in top_complaints],
+        "reviews": sentiment_count
+    })
+
+
+# FACEBOOK ANALYSIS -----------------------------------------------------------------------------------
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def facebook_monthly_report(request):
+    user = request.user
+
+    page_id = user.facebook_page_id
+    if not page_id:
+        return Response({"error": "Facebook page not connected"}, status=400)
+
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+
+    start_date, end_date = get_month_range(year, month)
+    start_datetime = datetime.combine(start_date, time.min)
+    end_datetime = datetime.combine(end_date, time.max)
+
+    messages = FacebookMessage.objects.filter(
+        recipient_page_id=page_id,
+        timestamp__range=(start_datetime, end_datetime)
+    )
+
+    comments = FacebookComment.objects.filter(
+        recipient_id=page_id,
+        timestamp__range=(start_datetime, end_datetime)
+    )
+
+    unique_senders = set(
+        list(messages.values_list("sender_id", flat=True)) +
+        list(comments.values_list("sender_id", flat=True))
+    )
+
+    days = (end_date - start_date).days + 1
+
+    return Response({
+        "period": f"{start_date.strftime('%Y-%m')}",
+        "messages": {
+            "total": messages.count(),
+            "daily_avg": round(messages.count() / days, 2)
+        },
+        "comments": {
+            "total": comments.count(),
+            "daily_avg": round(comments.count() / days, 2)
+        },
+        "conversations": len(unique_senders)
+    })
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def facebook_best_worst_posts(request):
+    user = request.user
+    page_id = user.facebook_page_id
+    access_token = user.facebook_access_token
+
+    if not page_id or not access_token:
+        return Response({"error": "Facebook page or access token missing"}, status=400)
+
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+    start_date, end_date = get_month_range(year, month)
+
+    url = f"https://graph.facebook.com/v24.0/{page_id}/posts"
+    params = {
+        "fields": "id,message,created_time,permalink_url,shares,likes.summary(true),comments.summary(true)",
+        "access_token": access_token,
+        "limit": 50
+    }
+
+    data = requests.get(url, params=params).json().get("data", [])
+
+    posts = []
+    for post in data:
+        post_date = datetime.fromisoformat(post["created_time"].replace("Z", "+00:00")).date()
+        if start_date <= post_date <= end_date:
+            likes = post.get("likes", {}).get("summary", {}).get("total_count", 0)
+            comments_count = post.get("comments", {}).get("summary", {}).get("total_count", 0)
+            post["engagement"] = likes + comments_count
+            post["likes"] = likes
+            post["comments_count"] = comments_count
+            posts.append(post)
+
+    if not posts:
+        return Response({"message": "No posts in this month"})
+
+    best_post = max(posts, key=lambda x: x["engagement"])
+    worst_post = min(posts, key=lambda x: x["engagement"])
+
+    return Response({
+        "period": f"{start_date.strftime('%Y-%m')}",
+        "best_post": {
+            "permalink": best_post["permalink_url"],
+            "likes": best_post["likes"],
+            "comments": best_post["comments_count"],
+            "engagement": best_post["engagement"]
+        },
+        "worst_post": {
+            "permalink": worst_post["permalink_url"],
+            "likes": worst_post["likes"],
+            "comments": worst_post["comments_count"],
+            "engagement": worst_post["engagement"]
+        }
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def facebook_complaints_and_reviews(request):
+    user = request.user
+    page_id = user.facebook_page_id
+
+    if not page_id:
+        return Response({"error": "Facebook page not connected"}, status=400)
+
+    year = request.GET.get("year")
+    month = request.GET.get("month")
+    start_date, end_date = get_month_range(year, month)
+
+    messages = FacebookMessage.objects.filter(
+        recipient_page_id=page_id,
+        timestamp__date__range=(start_date, end_date)
+    )
+
+    comments = FacebookComment.objects.filter(
+        recipient_id=page_id,
+        timestamp__date__range=(start_date, end_date)
+    )
+
+    complaints = []
+    sentiment_count = {"Positive": 0, "Neutral": 0, "Negative": 0}
+
+    for obj in list(messages) + list(comments):
+        text = getattr(obj, "message", None) or getattr(obj, "comment", "")
+
+        sentiment = gpt_classify_text(text, task="sentiment")
+        complaint = gpt_classify_text(text, task="complaint")
+
+        if sentiment in sentiment_count:
+            sentiment_count[sentiment] += 1
+
+        if complaint == "Yes":
+            complaints.append(text)
+
+    top_complaints = Counter(complaints).most_common(5)
+
+    return Response({
+        "period": f"{start_date.strftime('%Y-%m')}",
+        "top_complaints": [{"topic": k, "count": v} for k, v in top_complaints],
+        "reviews": sentiment_count
+    })

@@ -282,6 +282,10 @@ class InstagramMessage(models.Model):
     reply = models.TextField(blank=True, null=True)  # reply sent to sender
     timestamp = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["recipient_id", "timestamp"]),
+        ]
     def __str__(self):
         return f"Message from {self.sender_username or self.sender_id} to {self.user.username}"
 
@@ -303,6 +307,10 @@ class InstagramComment(models.Model):
     reply = models.TextField(blank=True, null=True)  # reply to comment
     timestamp = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["recipient_id", "timestamp"]),
+        ]
     def __str__(self):
         return f"Comment from {self.sender_username or self.sender_id} to {self.user.username}"
 
@@ -320,8 +328,13 @@ class FacebookMessage(models.Model):
     sender_name = models.CharField(max_length=100, blank=True, null=True)
     recipient_page_id = models.CharField(max_length=50)             
     message = models.TextField()                                    
-    reply = models.TextField(blank=True, null=True)                
+    reply = models.TextField(blank=True, null=True)   
+    timestamp = models.DateTimeField(auto_now_add=True)             
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["recipient_page_id", "timestamp"]),
+        ]
     def __str__(self):
         return f"FB Message from {self.sender_name or self.sender_id} to page {self.recipient_page_id}"
 
@@ -341,13 +354,17 @@ class FacebookComment(models.Model):
     reply = models.TextField(blank=True, null=True)                   
     timestamp = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=["recipient_id", "timestamp"]),
+        ]
     def __str__(self):
         return f"FB Comment from {self.sender_name or self.sender_id} on post {self.post_id}"
 
 
 class BusinessSession(models.Model):
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,  # ✅ Correct way
+        settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         null=True,
         blank=True,
