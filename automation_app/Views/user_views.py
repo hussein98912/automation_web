@@ -847,3 +847,115 @@ def facebook_complaints_and_reviews(request):
         "top_complaints": [{"topic": k, "count": v} for k, v in top_complaints],
         "reviews": sentiment_count
     })
+
+
+N8N_AVAILABILITY_URL = "https://n8n.urbatech.io/webhook/b9745a63-953f-41da-8e97-750caa30571e/get-availability"
+N8N_AUTH_TOKEN = "f6b5bed0-c896-484b-b610-b6ef3f72b893"
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_available_time_slots(request):
+
+    headers = {
+        "Authorization": N8N_AUTH_TOKEN
+    }
+
+    try:
+        response = requests.get(
+            N8N_AVAILABILITY_URL,
+            headers=headers,
+            timeout=10
+        )
+        response.raise_for_status()
+    except requests.exceptions.RequestException:
+        return Response(
+            {"error": "Failed to fetch availability"},
+            status=status.HTTP_502_BAD_GATEWAY
+        )
+
+    data = response.json()
+
+    if isinstance(data, list):
+        available_slots = data
+    elif isinstance(data, dict):
+        available_slots = data.get("available_slots", [])
+    else:
+        available_slots = []
+
+    return Response(
+        {"available_slots": available_slots},
+        status=status.HTTP_200_OK
+    )
+
+
+N8N_CREATE_MEETING_URL = "https://n8n.urbatech.io/webhook/2a216d4f-4843-485a-a8ae-10901a9b81f0/create-meeting"
+N8N_AUTH_TOKEN = "f6b5bed0-c896-484b-b610-b6ef3f72b893"
+
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def create_meeting(request):
+    user = request.user
+
+    # 1. Email comes ONLY from token
+    if not user.email:
+        return Response(
+            {"error": "User email not found"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    customer_email = user.email
+
+    # 2. Data from frontend
+    meeting_start_time = request.data.get("meeting_start_time")
+    user_time_zone = request.data.get("user_time_zone")
+
+    if not meeting_start_time or not user_time_zone:
+        return Response(
+            {"error": "meeting_start_time and user_time_zone are required"},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # 3. Payload for n8n
+    payload = {
+        "customer_email": customer_email,
+        "meeting_start_time": meeting_start_time,
+        "user_time_zone": user_time_zone
+    }
+
+    # 4. Call n8n
+    try:
+        response = requests.post(
+            N8N_CREATE_MEETING_URL,
+            json=payload,
+            headers={
+                "Authorization": N8N_AUTH_TOKEN,
+                "Content-Type": "application/json"
+            },
+            timeout=15
+        )
+    except requests.RequestException as e:
+        return Response(
+            {"error": "Failed to connect to meeting service"},
+            status=status.HTTP_502_BAD_GATEWAY
+        )
+
+    # 5. Handle n8n response
+    if response.status_code not in [200, 201]:
+        return Response(
+            {
+                "error": "Meeting creation failed",
+                "details": response.text
+            },
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    return Response(
+        {
+            "message": "Meeting created successfully",
+            "data": response.json()
+        },
+        status=status.HTTP_201_CREATED
+    )

@@ -84,4 +84,6 @@ urlpatterns = [
     path('facebook/monthly-report/', user_views.facebook_monthly_report, name='facebook-monthly-report'),
     path('facebook/best-worst-posts/', user_views.facebook_best_worst_posts, name='facebook-best-worst-posts'),
     path('facebook/complaints-reviews/', user_views.facebook_complaints_and_reviews, name='facebook-complaints-reviews'),
+    path("availability/", get_available_time_slots, name="availability"),
+    path("meetings/create/", create_meeting, name="create-meeting"),
 ]
