@@ -86,4 +86,8 @@ urlpatterns = [
     path('facebook/complaints-reviews/', user_views.facebook_complaints_and_reviews, name='facebook-complaints-reviews'),
     path("availability/", get_available_time_slots, name="availability"),
     path("meetings/create/", create_meeting, name="create-meeting"),
+    path("instagram/ai/chat/", instagram_ai_chat, name="instagram-ai-chat"),
+    path("facebook/ai/chat/", facebook_ai_chat, name="facebook-ai-chat"),
+    path("business-sessions/<int:session_id>/",BusinessSessionUpdateView.as_view(),name="business-session-update"),
+
 ]

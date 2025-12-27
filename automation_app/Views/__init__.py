@@ -8,3 +8,5 @@ from .notification_views import *
 from .admin_views import *
 from.service_views import*
 from.ai_agent_views import*
+from .instagram_agent import *
+from .facebook_agent import *

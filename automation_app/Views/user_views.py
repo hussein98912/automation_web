@@ -4,14 +4,15 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated,AllowAny
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from django.contrib.auth.models import User
-from ..models import Notification,ChatHistory,Project, Order, CustomUser ,ContactMessage,InstagramMessage, InstagramComment,FacebookComment,FacebookMessage
-from ..serializers import NotificationSerializer, CustomUserSerializer,ContactMessageSerializer,UpdateProfileSerializer,ChangePasswordSerializer,InstagramStatsSerializer,FacebookStatsSerializer
+from ..models import Notification,ChatHistory,Project, Order, CustomUser ,ContactMessage,InstagramMessage, InstagramComment,FacebookComment,FacebookMessage,BusinessSession
+from ..serializers import NotificationSerializer, CustomUserSerializer,ContactMessageSerializer,UpdateProfileSerializer,ChangePasswordSerializer,InstagramStatsSerializer,FacebookStatsSerializer,BusinessSessionUpdateSerializer
 from django.contrib.auth import get_user_model
 from rest_framework.decorators import api_view, permission_classes
 from django.contrib.auth import update_session_auth_hash
 from django.http import JsonResponse
 from datetime import datetime, timedelta
 import requests
+from django.shortcuts import get_object_or_404
 from django.views import View
 from datetime import datetime, time
 from ..utils import get_month_range,gpt_classify_text
@@ -959,3 +960,35 @@ def create_meeting(request):
         },
         status=status.HTTP_201_CREATED
     )
+
+
+class BusinessSessionUpdateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, session_id):
+        session = get_object_or_404(
+            BusinessSession,
+            id=session_id,
+            user=request.user
+        )
+
+        serializer = BusinessSessionUpdateSerializer(
+            session,
+            data=request.data
+        )
+
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        serializer.save()
+
+        return Response(
+            {
+                "message": "Business session updated successfully",
+                "data": serializer.data
+            },
+            status=status.HTTP_200_OK
+        )

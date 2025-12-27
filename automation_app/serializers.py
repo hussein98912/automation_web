@@ -342,3 +342,13 @@ class AdminUpdateSocialSerializer(serializers.ModelSerializer):
             'facebook_page_id',
             'instagram_account_id',
         ]
+
+
+class BusinessSessionUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BusinessSession
+        fields = [
+            "name",
+            "business_type",
+            "business_description",
+        ]
