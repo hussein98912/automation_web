@@ -4,6 +4,8 @@ from django.db import models
 from django.conf import settings
 from .price import calculate_order_price
 import hashlib
+from django.utils import timezone
+import datetime
 
 class CustomUser(AbstractUser):
     full_name = models.CharField(max_length=200)
@@ -473,3 +475,16 @@ class TelegramBot(models.Model):
 
     def __str__(self):
         return f"Telegram bot for session {self.business_session.id}"
+    
+
+
+class PasswordResetOTP(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    code = models.CharField(max_length=6)
+    is_used = models.BooleanField(default=False)
+    is_verified = models.BooleanField(default=False)  # NEW
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def is_expired(self):
+        # 600 seconds = 10 minutes
+        return (timezone.now() - self.created_at).total_seconds() > 600

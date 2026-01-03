@@ -89,5 +89,7 @@ urlpatterns = [
     path("instagram/ai/chat/", instagram_ai_chat, name="instagram-ai-chat"),
     path("facebook/ai/chat/", facebook_ai_chat, name="facebook-ai-chat"),
     path("business-sessions/<int:session_id>/",BusinessSessionUpdateView.as_view(),name="business-session-update"),
-
+    path("forgot-password/", forgot_password_request,name='forget the password'),
+    path('verify-otp/', verify_otp, name='verify-otp'),
+    path('change-password/', change_password_after_otp, name='change-password-after-otp'),
 ]

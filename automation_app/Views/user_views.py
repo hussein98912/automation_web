@@ -13,10 +13,10 @@ from django.http import JsonResponse
 from datetime import datetime, timedelta
 import requests
 from django.shortcuts import get_object_or_404
-from django.views import View
 from datetime import datetime, time
 from ..utils import get_month_range,gpt_classify_text
 from collections import Counter
+
 
 User = get_user_model()
 
@@ -992,3 +992,6 @@ class BusinessSessionUpdateView(APIView):
             },
             status=status.HTTP_200_OK
         )
+    
+
+

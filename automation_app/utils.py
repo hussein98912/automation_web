@@ -5,6 +5,8 @@ import random
 import openai
 import os
 from dotenv import load_dotenv
+import random
+
 
 # دالة لتوليد اسم workflow مقترح
 def suggest_workflow_name(service_title):
@@ -101,3 +103,7 @@ def gpt_classify_text(text, task="sentiment"):
     except Exception as e:
         print("GPT classification error:", e)
         return "neutral" if task == "sentiment" else "No"
+    
+
+def generate_otp():
+    return str(random.randint(100000, 999999))
