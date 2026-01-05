@@ -63,9 +63,9 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     "corsheaders.middleware.CorsMiddleware",
-    "django.middleware.common.CommonMiddleware",
     'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
+
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 ROOT_URLCONF = 'mynewsite.urls'
 
@@ -184,10 +184,11 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("redis://red-d4188h3uibrs739d5rs0:6379")],
+            "hosts": [("red-d4188h3uibrs739d5rs0.onrender.com", 6379)],
         },
     },
 }
+
 
 
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
