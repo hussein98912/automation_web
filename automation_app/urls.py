@@ -92,4 +92,6 @@ urlpatterns = [
     path("forgot-password/", forgot_password_request,name='forget the password'),
     path('verify-otp/', verify_otp, name='verify-otp'),
     path('change-password/', change_password_after_otp, name='change-password-after-otp'),
+    path('plans/', PlansListView.as_view(), name='plans-list'),
+    path('checkout/', CreateStripeCheckoutView.as_view(), name='create-checkout'),
 ]

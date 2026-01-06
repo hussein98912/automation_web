@@ -364,73 +364,86 @@ class FacebookComment(models.Model):
         return f"FB Comment from {self.sender_name or self.sender_id} on post {self.post_id}"
 
 
+
+
+
+class Plan(models.Model):
+    name = models.CharField(max_length=50, unique=True, default="Unnamed Session")
+    max_messages = models.PositiveIntegerField()
+    model_name = models.CharField(max_length=50)
+    max_tokens = models.PositiveIntegerField()
+    allow_sdk = models.BooleanField(default=False)
+    allow_telegram = models.BooleanField(default=False)
+    
+    # Stripe
+    stripe_price_id = models.CharField(
+        max_length=255,
+        help_text="Stripe Price ID (price_xxx)"
+    )
+    
+    # Local price (for display/records)
+    price = models.DecimalField(
+        max_digits=10,  # up to 99999999.99
+        decimal_places=2,
+        default=0.00,
+        help_text="Price in your currency (e.g., USD)"
+    )
+
+    def __str__(self):
+        return f"{self.name} - ${self.price}"
+
+
 class BusinessSession(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name='ai_agents'   
+        related_name="ai_agents"
     )
-    name = models.CharField(max_length=150,null=True)
+    plan = models.ForeignKey(
+        Plan,
+        on_delete=models.PROTECT,
+        related_name="business_sessions",
+    )
+    name = models.CharField(max_length=150)
     business_type = models.CharField(max_length=100)
     business_description = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
+
+    # Chat memory
     chat_history = models.JSONField(default=list)
 
+    # Track usage
+    messages_used = models.PositiveIntegerField(default=0)
+    last_usage_reset = models.DateTimeField(auto_now_add=True)
+
     def __str__(self):
-        return f"{self.business_type} session for {self.user.username if self.user else 'Anonymous'}"
-    
+        return f"{self.name} ({self.plan.name})"
 
 
-# ai_agent/models.py
 class BusinessSessionOrder(models.Model):
-    STATUS_CHOICES = (
-        ("pending", "Pending Review"),
-        ("ready_for_payment", "Ready for Payment"),
-        ("in_progress", "In Progress"),
-        ("completed", "Completed"),
-        ("cancelled", "Cancelled"),
-    )
+    STATUS_PENDING = "pending"
+    STATUS_PAID = "paid"
+    STATUS_FAILED = "failed"
+    STATUS_CANCELED = "canceled"
 
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="business_session_orders"
-    )
+    STATUS_CHOICES = [
+        (STATUS_PENDING, "Pending"),
+        (STATUS_PAID, "Paid"),
+        (STATUS_FAILED, "Failed"),
+        (STATUS_CANCELED, "Canceled"),
+    ]
 
-    session = models.ForeignKey(
-        BusinessSession,
-        on_delete=models.CASCADE,
-        related_name="orders"
-    )
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    session = models.ForeignKey(BusinessSession, on_delete=models.CASCADE)
+    plan = models.ForeignKey(Plan, on_delete=models.PROTECT)
 
-    order_details = models.TextField(blank=True)
-
-    # Admin will set this later
-    total_price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True
-    )
-
-    status = models.CharField(
-        max_length=30,
-        choices=STATUS_CHOICES,
-        default="pending"
-    )
-    
-    stripe_payment_intent_id = models.CharField(
-        max_length=255,
-        null=True,
-        blank=True
-    )
-
+    stripe_session_id = models.CharField(max_length=255, null=True, blank=True)
+    stripe_subscription_id = models.CharField(max_length=255, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Order #{self.id} for {self.session.name}"
+        return f"Order {self.id} - {self.status}"
 
 
 class AgentAPIKey(models.Model):
@@ -449,7 +462,6 @@ class AgentAPIKey(models.Model):
 
     def __str__(self):
         return f"API key for agent {self.agent.id}"
-    
 
 
 class SDKChatSession(models.Model):
@@ -461,6 +473,8 @@ class SDKChatSession(models.Model):
     class Meta:
         unique_together = ("api_key", "session_id")
 
+    def __str__(self):
+        return f"SDK Session {self.session_id} for Agent {self.api_key.agent.id}"
 
 
 class TelegramBot(models.Model):
@@ -475,16 +489,18 @@ class TelegramBot(models.Model):
 
     def __str__(self):
         return f"Telegram bot for session {self.business_session.id}"
-    
 
 
 class PasswordResetOTP(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     code = models.CharField(max_length=6)
     is_used = models.BooleanField(default=False)
-    is_verified = models.BooleanField(default=False)  # NEW
+    is_verified = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def is_expired(self):
-        # 600 seconds = 10 minutes
+        # Expires after 10 minutes
         return (timezone.now() - self.created_at).total_seconds() > 600
+
+    def __str__(self):
+        return f"OTP for {self.user} - used: {self.is_used}"
