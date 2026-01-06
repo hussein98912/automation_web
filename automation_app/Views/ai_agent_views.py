@@ -480,8 +480,8 @@ class CreateStripeCheckoutView(APIView):
                 "price": plan.stripe_price_id,
                 "quantity": 1
             }],
-            success_url=settings.FRONTEND_URL + "/payment-success",
-            cancel_url=settings.FRONTEND_URL + "/payment-cancel",
+            success_url=settings.FRONTEND_URL + "/dashboard/products/bot-builder/",
+            cancel_url=settings.FRONTEND_URL + "/dashboard/products/bot-builder/",
             metadata={"order_id": str(order.id)}
         )
 
