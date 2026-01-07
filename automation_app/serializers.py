@@ -50,6 +50,9 @@ class OrderSerializer(serializers.ModelSerializer):
             "workflow_details",
             "total_price",
             "status",
+            "meeting_scheduled",
+            "meeting_done",
+            "meeting_start_time",
             "created_at",
         ]
         read_only_fields = ["total_price", "status", "created_at"]

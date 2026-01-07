@@ -12,7 +12,8 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from automation_app.utils import send_real_time_notification
 from django.core.exceptions import ValidationError
-
+from rest_framework.permissions import IsAdminUser
+from django.utils.dateparse import parse_datetime
 
 
 
@@ -111,45 +112,73 @@ class OrderViewSet(viewsets.ModelViewSet):
 
 
 class OrderStatusUpdateAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAdminUser]
     authentication_classes = [JWTAuthentication]
 
     def patch(self, request, order_id, *args, **kwargs):
-        """
-        Update only the status of the authenticated user's order.
-        URL example: PATCH /orders/1/status/
-        Body example: { "status": "ready_for_payment" }
-        """
+        # Required fields
         new_status = request.data.get("status")
+        meeting_done = request.data.get("meeting_done")
 
-        if not new_status:
-            return Response({"error": "status is required."}, status=status.HTTP_400_BAD_REQUEST)
-
-        order = get_object_or_404(Order, pk=order_id, user=request.user)
-
-        if new_status not in dict(Order.STATUS_CHOICES):
+        if new_status is None or meeting_done is None:
             return Response(
-                {"error": f"Invalid status. Allowed: {list(dict(Order.STATUS_CHOICES).keys())}"},
+                {"error": "Both 'status' and 'meeting_done' are required."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Update order
+        order = get_object_or_404(Order, pk=order_id)
+
+        # Validate status
+        if new_status not in dict(Order.STATUS_CHOICES):
+            return Response(
+                {
+                    "error": f"Invalid status. Allowed: {list(dict(Order.STATUS_CHOICES).keys())}"
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate meeting logic
+        if not order.meeting_scheduled:
+            return Response(
+                {"error": "Cannot mark meeting as done because it was not scheduled."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if meeting_done is not True:
+            return Response(
+                {"error": "meeting_done must be true."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Apply updates
         order.status = new_status
+        order.meeting_done = True
         order.save()
 
-        # Notification messages
-        messages = {
+        # Notifications
+        status_messages = {
             "ready_for_payment": f"💰 Your order #{order.id} is now ready for payment.",
             "completed": f"✅ Your order #{order.id} has been completed successfully.",
             "in_progress": f"🔧 Your order #{order.id} is now in progress.",
         }
 
-        if new_status in messages:
-            Notification.objects.create(user=order.user, message=messages[new_status])
-            send_real_time_notification(order.user.id, messages[new_status])
+        Notification.objects.create(
+            user=order.user,
+            message=f"📅 Your meeting for order #{order.id} has been completed."
+        )
+
+        if new_status in status_messages:
+            Notification.objects.create(
+                user=order.user,
+                message=status_messages[new_status]
+            )
+            send_real_time_notification(
+                order.user.id,
+                status_messages[new_status]
+            )
 
         serializer = OrderSerializer(order)
-        return Response(serializer.data, status=status.HTTP_200_OK) 
+        return Response(serializer.data, status=status.HTTP_200_OK)
     
 
 @api_view(["POST"])
@@ -161,16 +190,31 @@ def create_project_order(request):
 
     project = get_object_or_404(Project, id=project_id)
 
+    meeting_scheduled = request.data.get("meeting_scheduled", False)
+    meeting_done = request.data.get("meeting_done", False)
+
+    meeting_start_time_raw = request.data.get("meeting_start_time")
+    meeting_start_time = (
+        parse_datetime(meeting_start_time_raw)
+        if meeting_start_time_raw
+        else None
+    )
+
     order = Order.objects.create(
         user=request.user,
         project=project,
         total_price=project.price,
-        status="ready_for_payment",
-        workflow_name=f"Purchase of project {project.title}"
+        status="pending",
+        workflow_name=f"Purchase of project {project.title}",
+        meeting_scheduled=meeting_scheduled,
+        meeting_done=meeting_done,
+        meeting_start_time=meeting_start_time,
     )
 
-    # ✅ Safe notification
-    item_name = order.project.title if order.project else (order.service.title if order.service else "Unknown")
+    item_name = order.project.title if order.project else (
+        order.service.title if order.service else "Unknown"
+    )
+
     Notification.objects.create(
         user=order.user,
         message=f"✅ Your order #{order.id} ({item_name}) has been received."

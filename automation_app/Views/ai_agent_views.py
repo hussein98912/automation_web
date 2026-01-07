@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser,AllowAny
 from django.conf import settings
-from ..models import BusinessSession,BusinessSessionOrder,AgentAPIKey,SDKChatSession,TelegramBot,Plan
+from ..models import BusinessSession,BusinessSessionOrder,AgentAPIKey,SDKChatSession,TelegramBot,Plan,Order
 from openai import OpenAI
 import os
 import requests
@@ -502,52 +502,77 @@ def stripe_webhook(request):
             sig_header,
             settings.STRIPE_WEBHOOK_SECRET
         )
-    except Exception:
+    except Exception as e:
+        print("Webhook error:", e)
         return HttpResponse(status=400)
-    
-    if event["type"] == "checkout.session.completed":
-        stripe_session = event["data"]["object"]
 
-        order_id = stripe_session["metadata"].get("order_id")
-        subscription_id = stripe_session.get("subscription")
+    event_type = event["type"]
+    data = event["data"]["object"]
 
-        order = BusinessSessionOrder.objects.get(id=order_id)
+    # --------------------------
+    # 1️⃣ Checkout completed
+    # --------------------------
+    if event_type == "checkout.session.completed":
+        # Grab metadata to identify what is being paid
+        metadata = data.get("metadata", {})
 
-        order.status = "paid"
-        order.stripe_subscription_id = subscription_id
-        order.save(update_fields=["status", "stripe_subscription_id"])
+        # --- Order payment ---
+        order_id = metadata.get("order_id")
+        if order_id:
+            order = Order.objects.filter(id=order_id).first()
+            if order:
+                order.status = "in_progress"  # mark as paid & processing
+                order.save(update_fields=["status"])
 
-        # ACTIVATE PLAN
-        business_session = order.session
-        business_session.plan = order.plan
-        business_session.save(update_fields=["plan"])
+        # --- BusinessSession plan purchase/upgrade ---
+        session_id = metadata.get("business_session_id")
+        plan_price_id = data.get("display_items", [{}])[0].get("price", {}).get("id")
+        if session_id and plan_price_id:
+            session = BusinessSession.objects.filter(id=session_id).first()
+            plan = Plan.objects.filter(stripe_price_id=plan_price_id).first()
+            if session and plan:
+                session.plan = plan
+                session.save(update_fields=["plan"])
 
-    if event["type"] == "invoice.payment_failed":
-        subscription_id = event["data"]["object"]["subscription"]
+    # --------------------------
+    # 2️⃣ Payment failed
+    # --------------------------
+    elif event_type == "invoice.payment_failed":
+        subscription_id = data.get("subscription")
 
-        order = BusinessSessionOrder.objects.filter(
-            stripe_subscription_id=subscription_id
-        ).first()
-
+        # Update Order status if linked
+        order = Order.objects.filter(stripe_subscription_id=subscription_id).first()
         if order:
-            order.status = "failed"
+            order.status = "cancelled"
             order.save(update_fields=["status"])
 
-    if event["type"] == "customer.subscription.deleted":
-        subscription_id = event["data"]["object"]["id"]
+    # --------------------------
+    # 3️⃣ Subscription canceled
+    # --------------------------
+    elif event_type == "customer.subscription.deleted":
+        subscription_id = data.get("id")
 
-        order = BusinessSessionOrder.objects.filter(
-            stripe_subscription_id=subscription_id
-        ).first()
-
+        # Update Order
+        order = Order.objects.filter(stripe_subscription_id=subscription_id).first()
         if order:
-            free_plan = Plan.objects.get(name="Free")
+            order.status = "cancelled"
+            order.save(update_fields=["status"])
 
-            session = order.session
+        # Update BusinessSession plan to Free if subscription canceled
+        session = BusinessSession.objects.filter(stripe_subscription_id=subscription_id).first()
+        if session:
+            free_plan = Plan.objects.get(name="Free")
             session.plan = free_plan
             session.save(update_fields=["plan"])
 
-            order.status = "canceled"
+    # --------------------------
+    # 4️⃣ Optional: payment intent succeeded (info)
+    # --------------------------
+    elif event_type == "payment_intent.succeeded":
+        intent_id = data.get("id")
+        order = Order.objects.filter(stripe_payment_intent_id=intent_id).first()
+        if order:
+            order.status = "in_progress"
             order.save(update_fields=["status"])
 
     return HttpResponse(status=200)

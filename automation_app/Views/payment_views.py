@@ -240,23 +240,23 @@ class BusinessSessionOrderPaymentView(APIView):
 endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
 
 
-@csrf_exempt
-def stripe_webhook(request):
-    payload = request.body
-    sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
+# @csrf_exempt
+# def stripe_webhook(request):
+#     payload = request.body
+#     sig_header = request.META.get("HTTP_STRIPE_SIGNATURE")
 
-    try:
-        event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
-    except Exception:
-        return HttpResponse(status=400)
+#     try:
+#         event = stripe.Webhook.construct_event(payload, sig_header, endpoint_secret)
+#     except Exception:
+#         return HttpResponse(status=400)
 
-    if event["type"] == "payment_intent.succeeded":
-        intent = event["data"]["object"]
-        try:
-            order = BusinessSessionOrder.objects.get(stripe_payment_intent_id=intent["id"])
-            order.status = "in_progress"
-            order.save(update_fields=["status"])
-        except BusinessSessionOrder.DoesNotExist:
-            pass
+#     if event["type"] == "payment_intent.succeeded":
+#         intent = event["data"]["object"]
+#         try:
+#             order = BusinessSessionOrder.objects.get(stripe_payment_intent_id=intent["id"])
+#             order.status = "in_progress"
+#             order.save(update_fields=["status"])
+#         except BusinessSessionOrder.DoesNotExist:
+#             pass
 
-    return HttpResponse(status=200)
+#     return HttpResponse(status=200)

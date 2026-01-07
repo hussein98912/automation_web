@@ -131,6 +131,9 @@ class Order(models.Model):
         default="1_month",
         help_text="مدة الاستضافة للخدمة"
     )
+    meeting_scheduled = models.BooleanField(default=False)
+    meeting_done = models.BooleanField(default=False)
+    meeting_start_time = models.DateTimeField(null=True, blank=True)
     total_price = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
     industry = models.CharField(max_length=50, blank=True, null=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")

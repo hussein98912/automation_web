@@ -94,4 +94,5 @@ urlpatterns = [
     path('change-password/', change_password_after_otp, name='change-password-after-otp'),
     path('plans/', PlansListView.as_view(), name='plans-list'),
     path('checkout/', CreateStripeCheckoutView.as_view(), name='create-checkout'),
+    path("stripe/webhook/", stripe_webhook, name="stripe-webhook"),
 ]

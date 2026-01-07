@@ -17,7 +17,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET")
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:3000") 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
