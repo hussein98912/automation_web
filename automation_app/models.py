@@ -391,7 +391,8 @@ class Plan(models.Model):
         default=0.00,
         help_text="Price in your currency (e.g., USD)"
     )
-
+    is_active = models.BooleanField(default=True)
+    
     def __str__(self):
         return f"{self.name} - ${self.price}"
 
